@@ -6,6 +6,7 @@ import Vehicle from '../components/Vehicle';
 import GameHeader from '../components/GameHeader';
 import LevelCompleteModal from '../components/LevelCompleteModal';
 import HelpModal from '../components/HelpModal';
+import AchievementToast from '../components/AchievementToast';
 import { buildOccupancyMap } from '../utils/gridUtils';
 import { canMove } from '../utils/collision';
 import { hasReachedExit, calculateStars, isNewBest } from '../utils/gameLogic';
@@ -13,7 +14,7 @@ import { playSound, initSounds } from '../utils/soundManager';
 import { MoveHistory } from '../utils/moveHistory';
 import { getHint, Hint } from '../utils/hintSystem';
 import { GameHaptics } from '../utils/haptics';
-import { checkAchievements } from '../utils/achievements';
+import { checkAchievements, getAchievementById, Achievement } from '../utils/achievements';
 import {
   getLevelProgress,
   saveLevelProgress,
@@ -23,6 +24,7 @@ import {
   updateStatistics,
   getStatistics,
   saveAchievement,
+  isAchievementUnlocked,
 } from '../utils/storage';
 import { getLevelById, getNextLevel, isLastLevel } from '../levels';
 import { LevelData, VehicleData } from '../types';
@@ -45,15 +47,40 @@ export default function GameScreen({ navigation, route }: Props) {
   const [isNewBestScore, setIsNewBestScore] = useState(false);
   const [hintedVehicleId, setHintedVehicleId] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const [achievementToShow, setAchievementToShow] = useState<Achievement | null>(null);
   
   const moveHistory = useRef(new MoveHistory()).current;
   const hintsUsedThisLevel = useRef(0);
+  const startTime = useRef<number>(Date.now());
+  const timerInterval = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize sounds on mount
+  // Initialize sounds and timer on mount
   useEffect(() => {
     initSounds();
     setCurrentLevelId(levelId);
+    startTime.current = Date.now();
+    
+    // Start timer
+    timerInterval.current = setInterval(() => {
+      if (!isCompleted) {
+        setElapsedTime(Math.floor((Date.now() - startTime.current) / 1000));
+      }
+    }, 1000);
+    
+    return () => {
+      if (timerInterval.current) {
+        clearInterval(timerInterval.current);
+      }
+    };
   }, [levelId]);
+  
+  // Stop timer when completed
+  useEffect(() => {
+    if (isCompleted && timerInterval.current) {
+      clearInterval(timerInterval.current);
+    }
+  }, [isCompleted]);
 
   // Check win condition after every move
   useEffect(() => {
@@ -99,9 +126,20 @@ export default function GameScreen({ navigation, route }: Props) {
       completedWithoutHints: hintsUsedThisLevel.current === 0,
     });
     
-    // Save newly unlocked achievements
-    newAchievements.forEach(achievementId => {
-      saveAchievement(achievementId, true);
+    // Save and show newly unlocked achievements
+    newAchievements.forEach((achievementId, index) => {
+      // Only save if not already unlocked
+      if (!isAchievementUnlocked(achievementId)) {
+        saveAchievement(achievementId, { unlocked: true });
+        
+        // Show toast after a delay (stagger if multiple)
+        setTimeout(() => {
+          const achievement = getAchievementById(achievementId);
+          if (achievement) {
+            setAchievementToShow({ ...achievement, unlocked: true });
+          }
+        }, 2000 + index * 3500); // Show first toast after 2s, then stagger
+      }
     });
     
     // Haptic feedback
@@ -219,6 +257,10 @@ export default function GameScreen({ navigation, route }: Props) {
     setIsNewBestScore(false);
     setHintedVehicleId(null);
     hintsUsedThisLevel.current = 0;
+    
+    // Reset timer
+    startTime.current = Date.now();
+    setElapsedTime(0);
   }, [level, moveHistory]);
 
   const handleToggleSound = useCallback(() => {
@@ -240,6 +282,10 @@ export default function GameScreen({ navigation, route }: Props) {
       setHintedVehicleId(null);
       hintsUsedThisLevel.current = 0;
       setCurrentLevelId(nextLevel.id);
+      
+      // Reset timer for new level
+      startTime.current = Date.now();
+      setElapsedTime(0);
     } else {
       // No more levels, go back to level select
       navigation.navigate('LevelSelect');
@@ -303,6 +349,11 @@ const handleHelp = useCallback(() => {
       <HelpModal
         visible={showHelp}
         onClose={() => setShowHelp(false)}
+      />
+      
+      <AchievementToast
+        achievement={achievementToShow}
+        onDismiss={() => setAchievementToShow(null)}
       />
     </SafeAreaView>
   );

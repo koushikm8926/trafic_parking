@@ -148,6 +148,11 @@ export function saveAchievement(achievementId: string, data: any): void {
   storage.set(KEYS.ACHIEVEMENTS, JSON.stringify(achievements));
 }
 
+export function getAchievement(achievementId: string): any {
+  const achievements = getAchievements();
+  return achievements[achievementId] || null;
+}
+
 export function isAchievementUnlocked(achievementId: string): boolean {
   const achievements = getAchievements();
   return achievements[achievementId]?.unlocked ?? false;

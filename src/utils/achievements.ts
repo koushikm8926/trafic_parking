@@ -29,11 +29,11 @@ export const achievements: Achievement[] = [
   {
     id: 'all_levels',
     title: 'Master Driver',
-    description: 'Complete all 10 levels',
+    description: 'Complete all 15 levels',
     icon: '🏆',
     unlocked: false,
     progress: 0,
-    maxProgress: 10,
+    maxProgress: 15,
   },
   {
     id: 'perfect_level',
@@ -56,7 +56,7 @@ export const achievements: Achievement[] = [
     icon: '✨',
     unlocked: false,
     progress: 0,
-    maxProgress: 10,
+    maxProgress: 15,
   },
   {
     id: 'no_hints',
@@ -154,8 +154,8 @@ export function checkAchievements(context: {
     newlyUnlocked.push('five_levels');
   }
   
-  // Master Driver (all 10 levels)
-  if (context.levelsCompleted >= 10) {
+  // Master Driver (all 15 levels)
+  if (context.levelsCompleted >= 15) {
     newlyUnlocked.push('all_levels');
   }
   
@@ -170,7 +170,7 @@ export function checkAchievements(context: {
   }
   
   // Star Collector (all levels with 3 stars)
-  if (context.threeStarLevels >= 10) {
+  if (context.threeStarLevels >= 15) {
     newlyUnlocked.push('all_three_stars');
   }
   

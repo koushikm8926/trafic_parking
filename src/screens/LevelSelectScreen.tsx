@@ -79,6 +79,21 @@ export default function LevelSelectScreen({ navigation }: Props) {
                 </Text>
               </View>
               
+              {/* Difficulty Badge */}
+              {isUnlocked && level.difficulty && (
+                <View style={[
+                  styles.difficultyBadge,
+                  level.difficulty === 'easy' && styles.difficultyEasy,
+                  level.difficulty === 'medium' && styles.difficultyMedium,
+                  level.difficulty === 'hard' && styles.difficultyHard,
+                  level.difficulty === 'expert' && styles.difficultyExpert,
+                ]}>
+                  <Text style={styles.difficultyText}>
+                    {level.difficulty.toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              
               {/* Stars */}
               {isUnlocked && (
                 <>
@@ -183,6 +198,30 @@ const styles = StyleSheet.create({
   },
   levelNumberLocked: {
     fontSize: 24,
+  },
+  difficultyBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  difficultyEasy: {
+    backgroundColor: '#4CAF50',
+  },
+  difficultyMedium: {
+    backgroundColor: '#FF9800',
+  },
+  difficultyHard: {
+    backgroundColor: '#F44336',
+  },
+  difficultyExpert: {
+    backgroundColor: '#9C27B0',
+  },
+  difficultyText: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: '#fff',
+    letterSpacing: 0.5,
   },
   starsRow: {
     flexDirection: 'row',

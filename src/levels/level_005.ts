@@ -3,6 +3,7 @@ export const level_005 = {
   "gridWidth": 6,
   "gridHeight": 6,
   "exitSide": "right",
+  "difficulty": "medium",
   "backgroundGrid": [
     [0, 0, 0, 0, 0, 0],
     [0, 2, 0, 2, 0, 0],

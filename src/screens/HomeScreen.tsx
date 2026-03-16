@@ -22,6 +22,14 @@ export default function HomeScreen({ navigation }: Props) {
         <View style={styles.topBar}>
           <TouchableOpacity
             style={styles.topButton}
+            onPress={() => navigation.navigate('Achievements')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.topButtonText}>🏆</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={styles.topButton}
             onPress={() => navigation.navigate('Statistics')}
             activeOpacity={0.7}
           >
