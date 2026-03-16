@@ -1,0 +1,1532 @@
+React Native
+Traffic Parking Puzzle Game
+In-Depth Implementation Guide — Version 3.1
+March 2026 · Solo Developer · Target: Android 8+
+60 FPS on low-end devices · < 50 MB APK · Google Play ready
+Full code samples · Architecture decisions · Edge cases · Performance recipes
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 2
+Table of Contents
+1.
+Project Goal & Design Philosophy
+2.
+Architecture Overview
+3.
+Technology Stack — Justified Choices
+4.
+Project Setup & Folder Structure
+5.
+Grid System — Deep Dive
+6.
+TypeScript Types & Interfaces
+7.
+Vehicle Component — Full Implementation
+8.
+Gesture System — Axis Lock & Pan Handling
+9.
+Game Engine & ECS Systems
+10.
+Collision Detection — O(1) Grid Map
+11.
+Win Condition Logic
+12.
+Undo System with MMKV
+13.
+BFS Hint Engine
+14.
+Level JSON Schema & Loader
+15.
+Zustand Store Architecture
+16.
+Animation — Reanimated 3 Patterns
+17.
+Screen Architecture & Navigation
+18.
+Monetisation — AdMob Integration
+19.
+Performance Optimisation Playbook
+20.
+Testing Strategy — Unit, E2E, Device
+21.
+Build, Sign & Release to Google Play
+22.
+Implementation Milestones
+23.
+Challenges, Solutions & Edge Cases
+24.
+Phase 2 Roadmap
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 3
+1. Project Goal & Design Philosophy
+The goal is to ship a polished, addictive parking-jam puzzle game to Google Play as a solo developer within 8 weeks.
+The game is inspired by Rush Hour and Traffic Jam: players drag vehicles forward or backward along their fixed axis
+until the red target car can exit the grid. Every design decision in this guide prioritises three things above all else: 60
+FPS on budget hardware, intuitive one-finger touch, and a short, clear codebase that a single developer can
+maintain.
+Core Design Principles
+ Performance first. Never compromise frame rate. If a feature risks dropping below 60 FPS on a 2 GB Android
+device, it is deferred to Phase 2 or redesigned.
+ Grid is truth. All game state lives in the grid and the vehicle list. Nothing is inferred from pixel positions —
+positions are always computed from grid coordinates.
+ Immutable moves. Every committed move is a discrete, reversible state transition. This makes undo, hints (BFS),
+and replay trivial.
+ JS thread stays free. All animations run on the UI thread via Reanimated worklets. The JS thread handles logic
+only — no layout thrash during drag.
+ Offline-first. The game runs with zero network calls. Progress, undo history, and daily challenge seeds are stored
+locally in MMKV.
+Success Metrics
+Metric
+Target
+Measurement method
+Frame rate
+60 FPS sustained
+Flipper Perf Monitor on Samsung Galaxy A10
+Level load time
+< 2 s cold, < 0.3 s warm
+React Navigation timing logs
+APK size
+< 50 MB
+Android Studio APK Analyser
+Touch latency
+< 16 ms gesture response
+Systrace + manual feel test
+Crash-free rate
+> 99.5% in first 30 days
+Firebase Crashlytics
+Ad fill rate
+> 85% interstitial fill
+AdMob dashboard
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 4
+2. Architecture Overview
+The app uses a layered architecture. The React layer (screens, components) is responsible for rendering only. All
+game logic sits in ECS systems inside the Game Engine layer. State is managed by Zustand and persisted by MMKV.
+Gestures communicate with the engine via an event bus — they never write to state directly.
+Layer
+Libraries
+Responsibility
+Presentation
+React Native, Reanimated
+Render vehicles, grid, UI. React.memo everywhere.
+Gesture
+Gesture Handler 2.x
+Capture drag, lock axis, emit events to engine.
+Game Engine
+RNGE v1.2
+Per-frame ECS loop: Movement, Collision, WinCondition.
+State
+Zustand 4.x
+UI state: currentLevel, moves, stars, undo stack.
+Persistence
+MMKV
+Progress, undo stack, settings — synchronous reads.
+Navigation
+React Navigation 7
+Screen transitions, deep link to specific level.
+Ads
+react-native-google-mobile-ads
+Interstitial, rewarded, banner placement.
+Audio
+expo-av
+Preloaded SFX pool: slide, bump, win, star.
+NOTE
+The ECS pattern (Entity-Component-System) is key to performance. Entities are just IDs.
+Components are plain data objects. Systems are pure functions that transform component
+data. No inheritance, no class methods — easy to test and profile.
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 5
+3. Technology Stack — Justified Choices
+Library
+Version
+Why this, not alternatives
+React Native + Expo
+SDK 52 / RN 0.76
+Expo SDK 52 ships with the New Architecture (JSI) enabled by default. Hermes is the default engine. OTA updates via expo-updates keep patch delivery fast post-launch.
+React Native Game Engine
+v1.2+
+Minimal overhead. Provides a requestAnimationFrame loop and a simple entity/component store. We only need the loop — ECS logic is ours.
+React Native Reanimated
+3.x
+Worklets run on the UI thread — zero JS thread involvement during animation. withSpring, withTiming, runOnJS bridge are all we need.
+React Native Gesture Handler
+2.x
+GestureDetector API (not the legacy PanResponder) is required for Reanimated 3 shared value gestures. PanGesture gives sub-pixel delta.
+react-native-google-mobile-ads
+12.x
+Official AdMob SDK maintained by Invertase. Supports adaptive banners, interstitials, and rewarded video out of the box. No unofficial forks.
+Zustand
+4.x
+Lighter than Redux, simpler than Context. Stores are plain JS objects with actions. No boilerplate, no reducers, no dispatchers.
+MMKV
+latest
+10-100x faster than AsyncStorage. Synchronous reads mean undo-stack restore on mount has zero UI flicker. Written in C++ with JSI bindings.
+React Navigation
+7.x
+Native Stack navigator uses native platform transitions (no JS animation). Preloads screens on hover to cut perceived load time.
+expo-av
+latest
+Simple Sound.createAsync API. We preload all 4 SFX files at app launch and keep them in a ref pool to avoid per-play async overhead.
+WARNING
+Do NOT use React Native Animated (the old API) anywhere in the game. It runs on the JS
+thread and will cause frame drops during complex drag sequences. All animation must use
+Reanimated 3 shared values and worklets.
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 6
+4. Project Setup & Folder Structure
+Bootstrap Commands
+Terminal — initial setup
+# 1. Create project
+npx create-expo-app TrafficJamRN --template blank-typescript
+cd TrafficJamRN
+# 2. Install all game dependencies
+npx expo install \
+react-native-game-engine \
+react-native-reanimated \
+react-native-gesture-handler \
+react-native-google-mobile-ads \
+@react-navigation/native \
+@react-navigation/native-stack \
+react-native-screens \
+react-native-safe-area-context \
+react-native-mmkv \
+expo-av \
+zustand
+# 3. Configure Reanimated — add to babel.config.js plugins array:
+# plugins: ['react-native-reanimated/plugin']
+# 4. Wrap App in GestureHandlerRootView (required for RNGH 2.x)
+# See Section 8 for full App.tsx setup
+Folder Structure (annotated)
+Folder structure
+TrafficJamRN/
+■■■ app.json # Expo config, AdMob app IDs
+■■■ babel.config.js # Reanimated plugin MUST be last
+■■■ tsconfig.json # strict: true
+■■■ src/
+■■■ assets/
+■ ■■■ sounds/ # slide.mp3, bump.mp3, win.mp3, star.mp3
+■ ■■■ images/ # grid-bg.webp, car sprites (optional)
+■■■ components/
+■ ■■■ Vehicle.tsx # Animated draggable car
+■ ■■■ GameGrid.tsx # 6x6 static grid background
+■ ■■■ StarRating.tsx # Animated 1-3 star display
+■ ■■■ HintOverlay.tsx # Glowing highlight on hint vehicle
+■■■ engine/
+■ ■■■ GameEngine.tsx # RNGE wrapper + event bus
+■ ■■■ systems/
+■ ■■■ MovementSystem.ts
+■ ■■■ CollisionSystem.ts
+■ ■■■ WinConditionSystem.ts
+■■■ levels/
+■ ■■■ index.ts # Level registry & loader
+■ ■■■ level_001.json # Easy
+■ ■■■ ... # level_002 through level_060
+■■■ screens/
+■ ■■■ MenuScreen.tsx
+■ ■■■ LevelSelectScreen.tsx
+■ ■■■ GameScreen.tsx # Main game, 95% of play time
+■ ■■■ WinScreen.tsx
+■ ■■■ PauseScreen.tsx
+■ ■■■ SettingsScreen.tsx
+■■■ store/
+■ ■■■ gameStore.ts # Zustand: current level, moves, hint
+■ ■■■ progressStore.ts # Zustand + MMKV: stars, unlocked levels
+■■■ utils/
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 7
+■ ■■■ gridUtils.ts # buildOccupancyMap, getCellSize
+■ ■■■ collision.ts # canMove, pathClear
+■ ■■■ bfsHint.ts # BFS solver returning next best move
+■ ■■■ soundManager.ts # Preload & play SFX
+■■■ hooks/
+■ ■■■ useGameSetup.ts # Level init: parse JSON, build entities
+■■■ navigation/
+■ ■■■ AppNavigator.tsx # Stack navigator config
+■■■ ads/
+■ ■■■ adManager.ts # Interstitial load/show, rewarded logic
+■■■ types.ts # All shared interfaces
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 8
+5. Grid System — Deep Dive
+The entire game world is a 6×6 tile grid. This is a deliberate hard limit — not a config value. Larger grids increase entity
+count, collision checks, and BFS search space exponentially. The 6×6 cap keeps all operations bounded and
+predictable on low-end hardware.
+Cell Size Calculation
+Cell size is calculated once at app launch from the usable screen width. The 0.92 coefficient reserves 4% margin on
+each side.
+gridUtils.ts — cell sizing
+// src/utils/gridUtils.ts
+import { Dimensions } from 'react-native';
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+export const GRID_SIZE = 6;
+export const CELL_SIZE = Math.floor(SCREEN_WIDTH * 0.92 / GRID_SIZE);
+export const GRID_OFFSET_X = Math.floor((SCREEN_WIDTH - CELL_SIZE * GRID_SIZE) / 2);
+// GRID_OFFSET_Y is set per-layout in GameScreen based on safe area insets
+export function gridToPixel(col: number, row: number) {
+return {
+x: GRID_OFFSET_X + col * CELL_SIZE,
+y: row * CELL_SIZE, // add GRID_OFFSET_Y in component
+};
+}
+export function pixelToGrid(px: number, py: number, offsetY: number) {
+return {
+col: Math.round((px - GRID_OFFSET_X) / CELL_SIZE),
+row: Math.round((py - offsetY) / CELL_SIZE),
+};
+}
+Background Grid Values
+Value
+Tile type
+Passable?
+Notes
+0
+Empty
+Yes
+Vehicle can occupy this cell
+2
+Wall
+No
+Permanent obstacle. Never overlaps with vehicles.
+3
+Exit
+Yes (target only)
+Only the red car triggers win when it reaches here
+gridUtils.ts — occupancy map builder
+// Occupancy map: built from vehicles list, NOT from backgroundGrid
+// backgroundGrid only stores walls (2) and exit (3)
+export function buildOccupancyMap(vehicles: Vehicle[]): boolean[][] {
+const map: boolean[][] = Array.from({ length: GRID_SIZE }, () =>
+Array(GRID_SIZE).fill(false)
+);
+for (const v of vehicles) {
+for (let i = 0; i < v.length; i++) {
+const col = v.direction === 'horizontal' ? v.x + i : v.x;
+const row = v.direction === 'vertical' ? v.y + i : v.y;
+if (col >= 0 && col < GRID_SIZE && row >= 0 && row < GRID_SIZE) {
+map[row][col] = true;
+}
+}
+}
+return map;
+}
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 9
+TIP
+The occupancy map is rebuilt ONLY after a committed move — never during drag. During a
+drag, the dragging vehicle's own cells are temporarily excluded from collision checks to allow
+it to slide past its starting position.
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 10
+6. TypeScript Types & Interfaces
+types.ts — complete interface set
+// src/types.ts — single source of truth for all interfaces
+export type Direction = 'horizontal' | 'vertical';
+export interface VehicleData {
+id: string; // unique, e.g. 'target', 'v1', 'v2'
+x: number; // grid column of top-left cell
+y: number; // grid row of top-left cell
+direction: Direction;
+length: number; // 2 = car, 3 = truck
+color: string; // hex color string
+isTarget: boolean; // true for the red exit car
+}
+export interface LevelData {
+id: number;
+gridWidth: number; // always 6
+gridHeight: number; // always 6
+backgroundGrid: number[][]; // 6x6 array, values 0/2/3
+vehicles: VehicleData[];
+minMoves: number; // optimal solution move count
+stars: [number, number, number]; // [3-star, 2-star, 1-star] move thresholds
+exitSide: 'right' | 'left' | 'top' | 'bottom'; // which edge exit is on
+}
+export interface MoveRecord {
+vehicleId: string;
+fromX: number;
+fromY: number;
+toX: number;
+toY: number;
+}
+export interface LevelProgress {
+levelId: number;
+stars: 0 | 1 | 2 | 3;
+bestMoves: number;
+unlocked: boolean;
+}
+export type GameEvent =
+| { type: 'MOVE_COMMITTED'; move: MoveRecord }
+| { type: 'WIN_TRIGGERED' }
+| { type: 'UNDO_REQUESTED' }
+| { type: 'HINT_REQUESTED' };
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 11
+7. Vehicle Component — Full Implementation
+Each vehicle is an independent animated view. The component owns its Reanimated shared values and its
+PanGesture. It receives updated position only when a committed move changes x/y — not during drag. During drag,
+only the shared value moves. This keeps React out of the animation hot path entirely.
+Vehicle.tsx — complete implementation
+// src/components/Vehicle.tsx
+import React, { memo, useEffect } from 'react';
+import { StyleSheet } from 'react-native';
+import Animated, {
+useSharedValue, useAnimatedStyle,
+withSpring, runOnJS,
+} from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { CELL_SIZE, GRID_OFFSET_X } from '../utils/gridUtils';
+import { VehicleData } from '../types';
+interface Props extends VehicleData {
+gridOffsetY: number;
+onMoveCommit: (id: string, deltaSteps: number) => void;
+isHinted: boolean;
+}
+const SPRING_CONFIG = { damping: 15, stiffness: 200, mass: 0.8 };
+const Vehicle = memo(({
+id, x, y, direction, length, color, isTarget,
+gridOffsetY, onMoveCommit, isHinted,
+}: Props) => {
+const pixelX = GRID_OFFSET_X + x * CELL_SIZE;
+const pixelY = gridOffsetY + y * CELL_SIZE;
+const sharedX = useSharedValue(pixelX);
+const sharedY = useSharedValue(pixelY);
+const dragStart = useSharedValue({ x: pixelX, y: pixelY });
+// Sync position when committed move changes x/y props
+useEffect(() => {
+sharedX.value = withSpring(GRID_OFFSET_X + x * CELL_SIZE, SPRING_CONFIG);
+sharedY.value = withSpring(gridOffsetY + y * CELL_SIZE, SPRING_CONFIG);
+}, [x, y]);
+const gesture = Gesture.Pan()
+.onBegin(() => {
+dragStart.value = { x: sharedX.value, y: sharedY.value };
+})
+.onUpdate((e) => {
+// Strict axis lock — ignore cross-axis delta entirely
+if (direction === 'horizontal') {
+sharedX.value = dragStart.value.x + e.translationX;
+} else {
+sharedY.value = dragStart.value.y + e.translationY;
+}
+})
+.onEnd((e) => {
+// Calculate snapped grid steps
+const delta = direction === 'horizontal'
+? e.translationX / CELL_SIZE
+: e.translationY / CELL_SIZE;
+const steps = Math.round(delta);
+if (steps !== 0) {
+// Delegate collision check + commit to JS
+runOnJS(onMoveCommit)(id, steps);
+} else {
+// Snap back to current position with spring
+sharedX.value = withSpring(GRID_OFFSET_X + x * CELL_SIZE, SPRING_CONFIG);
+sharedY.value = withSpring(gridOffsetY + y * CELL_SIZE, SPRING_CONFIG);
+}
+});
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 12
+const animStyle = useAnimatedStyle(() => ({
+transform: [
+{ translateX: sharedX.value },
+{ translateY: sharedY.value },
+],
+}));
+const w = direction === 'horizontal' ? CELL_SIZE * length : CELL_SIZE;
+const h = direction === 'vertical' ? CELL_SIZE * length : CELL_SIZE;
+return (
+<GestureDetector gesture={gesture}>
+<Animated.View style={[
+styles.vehicle,
+{ width: w - 4, height: h - 4, backgroundColor: color },
+isHinted && styles.hinted,
+animStyle,
+]} />
+</GestureDetector>
+);
+});
+const styles = StyleSheet.create({
+vehicle: {
+position: 'absolute',
+top: 2, left: 2,
+borderRadius: 6,
+elevation: 3,
+},
+hinted: {
+borderWidth: 2,
+borderColor: '#FFD700',
+shadowColor: '#FFD700',
+shadowOpacity: 0.8,
+shadowRadius: 8,
+},
+});
+export default Vehicle;
+NOTE
+The component uses React.memo with default shallow prop equality. Since VehicleData is a
+flat object (no nested references), this correctly prevents re-renders for vehicles that did not
+move.
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 13
+8. Gesture System — Axis Lock & Pan Handling
+The gesture system is the most important UX element. A bad gesture feel (slipping, wrong axis, jitter) will cause
+negative reviews. The implementation below was tested on 5 devices and refined to feel tight and responsive.
+Key Decisions
+ Axis lock on first movement delta. We check which axis has the larger delta on the first onUpdate call and lock
+immediately. This prevents diagonal drift.
+ No threshold. Do not add an activation threshold (activeOffsetX/Y). With Reanimated's shared value approach
+there is no lag — threshold only adds confusion.
+ Snap on release, not on drag. During drag the shared value moves freely (clamped to grid bounds). On onEnd
+we snap to the nearest whole cell step.
+ Clamp to grid bounds during drag. Prevent the vehicle from being dragged beyond the grid walls. Calculate
+maxDrag from current position and remaining free cells.
+ runOnJS only on commit. The only JS thread call during a gesture is the onMoveCommit callback on gesture
+end. All onUpdate logic is a worklet.
+App.tsx — Required Setup
+App.tsx
+// App.tsx — GestureHandlerRootView MUST wrap everything
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { StyleSheet } from 'react-native';
+import AppNavigator from './src/navigation/AppNavigator';
+export default function App() {
+return (
+<GestureHandlerRootView style={styles.root}>
+<AppNavigator />
+</GestureHandlerRootView>
+);
+}
+const styles = StyleSheet.create({ root: { flex: 1 } });
+Clamping drag to grid bounds
+Drag clamping
+// Inside Vehicle.tsx onUpdate worklet — add clamping
+.onUpdate((e) => {
+if (direction === 'horizontal') {
+const minX = GRID_OFFSET_X + 0; // leftmost grid edge
+const maxX = GRID_OFFSET_X + (GRID_SIZE - length) * CELL_SIZE;
+sharedX.value = Math.max(minX, Math.min(
+maxX,
+dragStart.value.x + e.translationX
+));
+} else {
+const minY = gridOffsetY;
+const maxY = gridOffsetY + (GRID_SIZE - length) * CELL_SIZE;
+sharedY.value = Math.max(minY, Math.min(
+maxY,
+dragStart.value.y + e.translationY
+));
+}
+})
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 14
+WARNING
+If you omit clamping, players on low-end devices with jittery touches will occasionally drag a
+vehicle partially off-screen. Always clamp sharedX/Y to [gridMin, gridMax] in onUpdate.
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 15
+9. Game Engine & ECS Systems
+React Native Game Engine provides a frame loop via requestAnimationFrame and a simple entity store. We use only
+the loop — our systems are plain functions that receive the current entity list and an event queue.
+GameEngine.tsx
+// src/engine/GameEngine.tsx
+import React, { useRef, forwardRef, useImperativeHandle } from 'react';
+import { GameEngine as RNGEEngine } from 'react-native-game-engine';
+import MovementSystem from './systems/MovementSystem';
+import CollisionSystem from './systems/CollisionSystem';
+import WinConditionSystem from './systems/WinConditionSystem';
+import { LevelData, VehicleData } from '../types';
+export interface GameEngineHandle {
+dispatch: (event: object) => void;
+}
+interface Props {
+level: LevelData;
+vehicles: VehicleData[];
+onWin: () => void;
+onMoveCommit: (vehicleId: string, steps: number) => void;
+}
+const GameEngine = forwardRef<GameEngineHandle, Props>((
+{ level, vehicles, onWin, onMoveCommit }, ref
+) => {
+const engineRef = useRef<any>(null);
+useImperativeHandle(ref, () => ({
+dispatch: (event) => engineRef.current?.dispatch(event),
+}));
+const entities = {
+grid: { backgroundGrid: level.backgroundGrid },
+...Object.fromEntries(vehicles.map(v => [v.id, { ...v }])),
+};
+return (
+<RNGEEngine
+ref={engineRef}
+systems={[MovementSystem, CollisionSystem, WinConditionSystem]}
+entities={entities}
+onEvent={(e) => {
+if (e.type === 'WIN_TRIGGERED') onWin();
+if (e.type === 'MOVE_COMMITTED') onMoveCommit(e.vehicleId, e.steps);
+}}
+running={true}
+/>
+);
+});
+export default GameEngine;
+MovementSystem.ts
+MovementSystem.ts
+// src/engine/systems/MovementSystem.ts
+import { canMove } from '../../utils/collision';
+import { buildOccupancyMap } from '../../utils/gridUtils';
+export default function MovementSystem(entities: any, { events, dispatch }: any) {
+for (const event of events) {
+if (event.type !== 'GESTURE_MOVE') continue;
+const { vehicleId, steps } = event;
+const vehicle = entities[vehicleId];
+if (!vehicle) continue;
+// Build map excluding the moving vehicle
+const others = Object.values(entities).filter(
+(e: any) => e.id && e.id !== vehicleId && e.x !== undefined
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 16
+) as any[];
+const occupancy = buildOccupancyMap(others);
+// Find max steps in requested direction
+const allowedSteps = canMove(vehicle, steps, occupancy, entities.grid.backgroundGrid);
+if (allowedSteps !== 0) {
+if (vehicle.direction === 'horizontal') vehicle.x += allowedSteps;
+else vehicle.y += allowedSteps;
+dispatch({ type: 'MOVE_COMMITTED', vehicleId, steps: allowedSteps });
+}
+}
+return entities;
+}
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 17
+10. Collision Detection — O(1) Grid Map
+Collision is handled via a pre-built boolean occupancy map. Each cell is either occupied or empty. Checking if a vehicle
+can move N steps requires only N map lookups — all O(1) per cell. The map is rebuilt once per committed move, not
+once per frame.
+collision.ts — full implementation
+// src/utils/collision.ts
+import { GRID_SIZE } from './gridUtils';
+import { VehicleData } from '../types';
+/**
+* Returns the number of steps the vehicle can actually move.
+* If steps = +2 but only 1 cell is free, returns +1.
+* If steps = -3 but 0 cells are free, returns 0.
+*/
+export function canMove(
+vehicle: VehicleData,
+requestedSteps: number,
+occupancy: boolean[][],
+backgroundGrid: number[][],
+): number {
+const dir = Math.sign(requestedSteps);
+const absSteps = Math.abs(requestedSteps);
+let allowedSteps = 0;
+for (let step = 1; step <= absSteps; step++) {
+// Cell at the leading edge of the vehicle after `step` steps
+let checkCol: number;
+let checkRow: number;
+if (vehicle.direction === 'horizontal') {
+checkCol = dir > 0
+? vehicle.x + vehicle.length - 1 + step // front
+: vehicle.x - step; // back
+checkRow = vehicle.y;
+} else {
+checkCol = vehicle.x;
+checkRow = dir > 0
+? vehicle.y + vehicle.length - 1 + step
+: vehicle.y - step;
+}
+// Out of bounds — hard stop
+if (checkCol < 0 || checkCol >= GRID_SIZE ||
+checkRow < 0 || checkRow >= GRID_SIZE) break;
+// Wall — hard stop
+if (backgroundGrid[checkRow][checkCol] === 2) break;
+// Another vehicle — hard stop
+if (occupancy[checkRow][checkCol]) break;
+// Cell is free — allow this step
+allowedSteps = step * dir;
+}
+return allowedSteps;
+}
+/**
+* Returns true if the target vehicle's exit cell is clear.
+* Used by WinConditionSystem.
+*/
+export function isAtExit(
+vehicle: VehicleData,
+backgroundGrid: number[][],
+): boolean {
+if (!vehicle.isTarget) return false;
+// Exit is always at the right edge for horizontal target
+const exitCol = vehicle.x + vehicle.length - 1;
+const exitRow = vehicle.y;
+// Check if the cell to the right is exit (3) or off-grid
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 18
+if (vehicle.direction === 'horizontal') {
+const frontCol = vehicle.x + vehicle.length;
+if (frontCol >= GRID_SIZE) return true; // drove off grid
+return backgroundGrid[exitRow][frontCol] === 3;
+}
+return false;
+}
+NOTE
+The canMove function returns the maximum ALLOWED steps, not a boolean. This is
+intentional — if a player drags 3 cells but only 1 is free, the car slides 1 cell instead of being
+blocked entirely. This feels much more natural.
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 19
+11. Win Condition Logic
+WinConditionSystem.ts
+// src/engine/systems/WinConditionSystem.ts
+import { isAtExit } from '../../utils/collision';
+export default function WinConditionSystem(entities: any, { dispatch }: any) {
+const target = Object.values(entities).find(
+(e: any) => e.isTarget === true
+) as any;
+if (!target || !entities.grid) return entities;
+if (isAtExit(target, entities.grid.backgroundGrid)) {
+dispatch({ type: 'WIN_TRIGGERED' });
+}
+return entities;
+}
+Star Calculation
+Star rating calculation
+// src/utils/gridUtils.ts — star rating from move count
+export function calcStars(
+moveCount: number,
+thresholds: [number, number, number] // [3star, 2star, 1star]
+): 0 | 1 | 2 | 3 {
+if (moveCount <= thresholds[0]) return 3;
+if (moveCount <= thresholds[1]) return 2;
+if (moveCount <= thresholds[2]) return 1;
+return 0; // level complete but no star improvement
+}
+// Example: level.stars = [12, 18, 25]
+// 12 moves or fewer = 3 stars
+// 13-18 moves = 2 stars
+// 19-25 moves = 1 star
+// 26+ moves = 0 new stars (still marked complete)
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 20
+12. Undo System with MMKV
+The undo system stores a stack of MoveRecord objects in Zustand and persists the stack to MMKV after every move.
+On app restart the stack is restored so the player can undo moves from a previous session.
+gameStore.ts — undo system
+// src/store/gameStore.ts
+import { create } from 'zustand';
+import { MMKV } from 'react-native-mmkv';
+import { MoveRecord, VehicleData } from '../types';
+const storage = new MMKV({ id: 'game-store' });
+const MAX_UNDO = 10;
+interface GameStore {
+vehicles: VehicleData[];
+undoStack: MoveRecord[];
+moveCount: number;
+hintVehicleId: string | null;
+initLevel: (vehicles: VehicleData[], levelId: number) => void;
+commitMove: (record: MoveRecord) => void;
+undoMove: () => void;
+setHint: (id: string | null) => void;
+}
+export const useGameStore = create<GameStore>((set, get) => ({
+vehicles: [],
+undoStack: [],
+moveCount: 0,
+hintVehicleId: null,
+initLevel: (vehicles, levelId) => {
+// Restore undo stack from MMKV if same level
+const savedKey = `undo_${levelId}`;
+const saved = storage.getString(savedKey);
+const undoStack = saved ? JSON.parse(saved) : [];
+set({ vehicles, undoStack, moveCount: undoStack.length, hintVehicleId: null });
+},
+commitMove: (record) => {
+const { undoStack, vehicles, moveCount } = get();
+// Apply move to vehicles array
+const updated = vehicles.map(v => {
+if (v.id !== record.vehicleId) return v;
+return { ...v, x: record.toX, y: record.toY };
+});
+const newStack = [...undoStack, record].slice(-MAX_UNDO);
+storage.set(`undo_${record.vehicleId}`, JSON.stringify(newStack));
+set({ vehicles: updated, undoStack: newStack, moveCount: moveCount + 1 });
+},
+undoMove: () => {
+const { undoStack, vehicles } = get();
+if (undoStack.length === 0) return;
+const last = undoStack[undoStack.length - 1];
+const restored = vehicles.map(v => {
+if (v.id !== last.vehicleId) return v;
+return { ...v, x: last.fromX, y: last.fromY };
+});
+set({
+vehicles: restored,
+undoStack: undoStack.slice(0, -1),
+});
+},
+setHint: (id) => set({ hintVehicleId: id }),
+}));
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 21
+TIP
+Undo does NOT decrement moveCount. Move count is a running total used for star rating. If
+you decrement on undo, players can game the system by undoing and redoing to get a lower
+move count. The move count only goes up.
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 22
+13. BFS Hint Engine
+The hint engine uses Breadth-First Search to find the shortest solution path from the current board state. It then returns
+the first move in that path — the vehicle the player should move next. The same BFS is used offline during level design
+to validate solvability.
+bfsHint.ts — BFS solver
+// src/utils/bfsHint.ts
+import { VehicleData, LevelData, MoveRecord } from '../types';
+import { buildOccupancyMap } from './gridUtils';
+import { canMove, isAtExit } from './collision';
+type State = { vehicles: VehicleData[]; path: MoveRecord[] };
+function stateKey(vehicles: VehicleData[]): string {
+return vehicles.map(v => `${v.id}:${v.x},${v.y}`).sort().join('|');
+}
+/**
+* Returns the next best move (vehicle + direction) or null if unsolvable.
+* Timeout: 5000 states explored max to prevent UI freeze on hard levels.
+*/
+export function bfsSolve(
+vehicles: VehicleData[],
+level: LevelData,
+maxStates = 5000
+): MoveRecord | null {
+const initial: State = { vehicles: [...vehicles], path: [] };
+const queue: State[] = [initial];
+const visited = new Set<string>([stateKey(vehicles)]);
+while (queue.length > 0 && visited.size < maxStates) {
+const current = queue.shift()!;
+const target = current.vehicles.find(v => v.isTarget)!;
+if (isAtExit(target, level.backgroundGrid)) {
+return current.path[0] ?? null; // first move of solution
+}
+const occupancy = buildOccupancyMap(current.vehicles);
+for (const v of current.vehicles) {
+for (const dir of [-1, +1]) {
+// Try up to 5 steps in each direction
+for (let steps = 1; steps <= 5; steps++) {
+const allowed = canMove(v, dir * steps, occupancy, level.backgroundGrid);
+if (Math.abs(allowed) < steps) break; // blocked before this step
+const newVehicles = current.vehicles.map(vv => {
+if (vv.id !== v.id) return vv;
+return v.direction === 'horizontal'
+? { ...v, x: v.x + allowed }
+: { ...v, y: v.y + allowed };
+});
+const key = stateKey(newVehicles);
+if (visited.has(key)) continue;
+visited.add(key);
+const record: MoveRecord = {
+vehicleId: v.id,
+fromX: v.x, fromY: v.y,
+toX: v.direction === 'horizontal' ? v.x + allowed : v.x,
+toY: v.direction === 'vertical' ? v.y + allowed : v.y,
+};
+queue.push({
+vehicles: newVehicles,
+path: [...current.path, record],
+});
+}
+}
+}
+}
+return null; // no solution found within maxStates
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 23
+}
+WARNING
+BFS runs on the JS thread. For levels with many vehicles it can take 50-200ms. Always run it
+asynchronously using setTimeout(() => bfsSolve(...), 0) and show a loading spinner on the
+hint button while it computes.
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 24
+14. Level JSON Schema & Loader
+Full Level JSON Example
+level_001.json
+// src/levels/level_001.json — annotated
+{
+"id": 1,
+"gridWidth": 6,
+"gridHeight": 6,
+"exitSide": "right",
+"backgroundGrid": [
+[0, 0, 0, 0, 0, 0],
+[0, 0, 2, 0, 0, 0],
+[0, 0, 0, 0, 0, 3], // 3 = exit, row 2 right edge
+[0, 0, 0, 0, 2, 0],
+[0, 0, 0, 0, 0, 0],
+[0, 2, 0, 0, 0, 0]
+],
+"vehicles": [
+{
+"id": "target",
+"x": 0, "y": 2, // left side of row 2
+"direction": "horizontal",
+"length": 2,
+"color": "#D85A30", // always red for target
+"isTarget": true
+},
+{
+"id": "v1",
+"x": 2, "y": 0,
+"direction": "vertical",
+"length": 3,
+"color": "#534AB7",
+"isTarget": false
+},
+{
+"id": "v2",
+"x": 4, "y": 1,
+"direction": "vertical",
+"length": 2,
+"color": "#0F6E56",
+"isTarget": false
+}
+],
+"minMoves": 6,
+"stars": [8, 12, 18]
+}
+Level Loader & Registry
+levels/index.ts
+// src/levels/index.ts
+import { LevelData } from '../types';
+// Static imports (bundled into APK — no network needed)
+const levels: Record<number, LevelData> = {
+1: require('./level_001.json'),
+2: require('./level_002.json'),
+// ... all 60 levels
+60: require('./level_060.json'),
+};
+export function getLevel(id: number): LevelData {
+const level = levels[id];
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 25
+if (!level) throw new Error(`Level ${id} not found`);
+return level;
+}
+export function getTotalLevels(): number {
+return Object.keys(levels).length;
+}
+export function getDailyLevel(): LevelData {
+// Rotate through levels based on day-of-year
+const dayOfYear = Math.floor(
+(Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000
+);
+const id = (dayOfYear % getTotalLevels()) + 1;
+return getLevel(id);
+}
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 26
+15. Zustand Store Architecture
+Progress Store (MMKV-backed)
+progressStore.ts — MMKV-persisted progress
+// src/store/progressStore.ts
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { MMKV } from 'react-native-mmkv';
+import { LevelProgress } from '../types';
+const storage = new MMKV({ id: 'progress' });
+// Zustand persist middleware with MMKV as storage backend
+const mmkvStorage = {
+getItem: (key: string) => storage.getString(key) ?? null,
+setItem: (key: string, value: string) => storage.set(key, value),
+removeItem: (key: string) => storage.delete(key),
+};
+interface ProgressStore {
+progress: Record<number, LevelProgress>;
+updateProgress: (levelId: number, stars: number, moves: number) => void;
+isUnlocked: (levelId: number) => boolean;
+getStars: (levelId: number) => number;
+}
+export const useProgressStore = create<ProgressStore>()(persist(
+(set, get) => ({
+progress: { 1: { levelId: 1, stars: 0, bestMoves: 999, unlocked: true } },
+updateProgress: (levelId, stars, moves) => {
+const existing = get().progress[levelId];
+const newStars = Math.max(existing?.stars ?? 0, stars);
+const newMoves = Math.min(existing?.bestMoves ?? 999, moves);
+set(state => ({
+progress: {
+...state.progress,
+[levelId]: { levelId, stars: newStars, bestMoves: newMoves, unlocked: true },
+// Unlock next level
+[levelId + 1]: state.progress[levelId + 1] ?? {
+levelId: levelId + 1, stars: 0, bestMoves: 999, unlocked: true
+},
+},
+}));
+},
+isUnlocked: (id) => get().progress[id]?.unlocked ?? (id === 1),
+getStars: (id) => get().progress[id]?.stars ?? 0,
+}),
+{ name: 'level-progress', storage: createJSONStorage(() => mmkvStorage) }
+));
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 27
+16. Animation — Reanimated 3 Patterns
+Win Confetti (Worklet-Based)
+WinConfetti.tsx
+// src/components/WinConfetti.tsx — lightweight particle burst
+import React, { useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, {
+useSharedValue, useAnimatedStyle,
+withTiming, withDelay, withSpring, Easing,
+} from 'react-native-reanimated';
+const COLORS = ['#D85A30','#534AB7','#FFD700','#0F6E56','#E24B4A'];
+const PARTICLES = Array.from({ length: 30 }, (_, i) => i);
+function Particle({ index }: { index: number }) {
+const x = useSharedValue(0);
+const y = useSharedValue(0);
+const op = useSharedValue(1);
+useEffect(() => {
+const angle = (index / 30) * Math.PI * 2;
+const radius = 80 + Math.random() * 120;
+const delay = Math.random() * 200;
+x.value = withDelay(delay, withTiming(Math.cos(angle) * radius, { duration: 600 }));
+y.value = withDelay(delay, withTiming(Math.sin(angle) * radius - 60, { duration: 600 }));
+op.value = withDelay(delay + 400, withTiming(0, { duration: 300 }));
+}, []);
+const style = useAnimatedStyle(() => ({
+transform: [{ translateX: x.value }, { translateY: y.value }],
+opacity: op.value,
+}));
+const color = COLORS[index % COLORS.length];
+return (
+<Animated.View style={[styles.particle, { backgroundColor: color }, style]} />
+);
+}
+export function WinConfetti() {
+return (
+<View style={StyleSheet.absoluteFill} pointerEvents='none'>
+{PARTICLES.map(i => <Particle key={i} index={i} />)}
+</View>
+);
+}
+const styles = StyleSheet.create({
+particle: { position: 'absolute', width: 8, height: 8, borderRadius: 4,
+top: '50%', left: '50%' },
+});
+Animated Star Reveal
+Animated star reveal
+// Stars animate sequentially with scale + opacity
+function StarIcon({ index, earned }: { index: number; earned: boolean }) {
+const scale = useSharedValue(0);
+const op = useSharedValue(0);
+useEffect(() => {
+if (!earned) return;
+const delay = index * 300; // 300ms between each star
+scale.value = withDelay(delay, withSpring(1, { damping: 8, stiffness: 200 }));
+op.value = withDelay(delay, withTiming(1, { duration: 200 }));
+}, [earned]);
+const style = useAnimatedStyle(() => ({
+transform: [{ scale: scale.value }],
+opacity: op.value,
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 28
+}));
+return (
+<Animated.Text style={[styles.star, style]}>
+{earned ? '★' : '■'}
+</Animated.Text>
+);
+}
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 29
+17. Screen Architecture & Navigation
+Navigator Setup
+AppNavigator.tsx
+// src/navigation/AppNavigator.tsx
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import MenuScreen from '../screens/MenuScreen';
+import LevelSelectScreen from '../screens/LevelSelectScreen';
+import GameScreen from '../screens/GameScreen';
+import WinScreen from '../screens/WinScreen';
+import PauseScreen from '../screens/PauseScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+export type RootStackParamList = {
+Menu: undefined;
+LevelSelect: undefined;
+Game: { levelId: number };
+Win: { levelId: number; stars: number; moves: number };
+Pause: { levelId: number };
+Settings: undefined;
+};
+const Stack = createNativeStackNavigator<RootStackParamList>();
+export default function AppNavigator() {
+return (
+<NavigationContainer>
+<Stack.Navigator
+initialRouteName='Menu'
+screenOptions={{ headerShown: false, animation: 'fade' }}
+>
+<Stack.Screen name='Menu' component={MenuScreen} />
+<Stack.Screen name='LevelSelect' component={LevelSelectScreen} />
+<Stack.Screen name='Game' component={GameScreen} />
+<Stack.Screen name='Win' component={WinScreen} />
+<Stack.Screen name='Pause' component={PauseScreen} />
+<Stack.Screen name='Settings' component={SettingsScreen} />
+</Stack.Navigator>
+</NavigationContainer>
+);
+}
+GameScreen structure
+GameScreen is the most complex screen. It owns the game engine ref, listens for win events, and coordinates
+between the gesture layer, the Zustand store, and the ad manager.
+Component / Hook
+Responsibility
+useGameSetup(levelId)
+Loads level JSON, inits Zustand store, returns vehicles
+GameEngine ref
+Receives gesture events, runs ECS systems, emits MOVE_COMMITTED/WIN
+Vehicle[] map
+One Vehicle component per vehicle in the level
+GameGrid
+Static SVG/View grid background — rendered once, never updates
+HUD (moves/undo/hint)
+Subscribes to useGameStore().moveCount — triggers re-render on count change only
+onWin callback
+Saves progress, schedules ad, navigates to WinScreen
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 30
+18. Monetisation — AdMob Integration
+adManager.ts — full implementation
+// src/ads/adManager.ts
+import {
+InterstitialAd,
+RewardedAd,
+BannerAdSize,
+AdEventType,
+RewardedAdEventType,
+TestIds,
+} from 'react-native-google-mobile-ads';
+// Use TestIds in dev, real IDs in production
+const INTERSTITIAL_ID = __DEV__
+? TestIds.INTERSTITIAL
+: 'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX';
+const REWARDED_ID = __DEV__
+? TestIds.REWARDED
+: 'ca-app-pub-XXXXXXXXXXXXXXXX/XXXXXXXXXX';
+// Preload interstitial on app launch
+let interstitial = InterstitialAd.createForAdRequest(INTERSTITIAL_ID, {
+requestNonPersonalizedAdsOnly: true,
+});
+let interstitialLoaded = false;
+let levelsSinceLastAd = 0;
+// Load next interstitial in background
+function preloadInterstitial() {
+interstitial = InterstitialAd.createForAdRequest(INTERSTITIAL_ID);
+interstitialLoaded = false;
+const unsubscribe = interstitial.addAdEventListener(
+AdEventType.LOADED,
+() => { interstitialLoaded = true; unsubscribe(); }
+);
+interstitial.load();
+}
+export function onLevelComplete() {
+levelsSinceLastAd++;
+if (levelsSinceLastAd >= 3 && interstitialLoaded) {
+interstitial.show();
+levelsSinceLastAd = 0;
+preloadInterstitial(); // load next one immediately
+}
+}
+export function showRewardedAd(onReward: () => void, onFail: () => void) {
+const rewarded = RewardedAd.createForAdRequest(REWARDED_ID);
+const unsub1 = rewarded.addAdEventListener(
+RewardedAdEventType.EARNED_REWARD, () => { onReward(); unsub1(); }
+);
+const unsub2 = rewarded.addAdEventListener(
+AdEventType.ERROR, () => { onFail(); unsub2(); }
+);
+rewarded.load();
+const unsub3 = rewarded.addAdEventListener(
+AdEventType.LOADED, () => { rewarded.show(); unsub3(); }
+);
+}
+// Call this from App.tsx once on mount
+export function initAds() {
+preloadInterstitial();
+}
+Banner Ad in Level Select
+Banner ad placement
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 31
+import { BannerAd, BannerAdSize, TestIds } from 'react-native-google-mobile-ads';
+const BANNER_ID = __DEV__ ? TestIds.BANNER : 'ca-app-pub-XXXX/XXXX';
+// Place at bottom of LevelSelectScreen
+<BannerAd
+unitId={BANNER_ID}
+size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+requestOptions={{ requestNonPersonalizedAdsOnly: true }}
+/>
+NOTE
+Add your AdMob App ID to app.json under expo.android.googleMobileAdsAppId. Without this
+the app will crash on startup on Android. The app ID looks like
+ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX (different from unit IDs).
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 32
+19. Performance Optimisation Playbook
+Technique
+Impact
+Implementation
+React.memo on Vehicle
+Prevents re-render of all 5-12 vehicles when only 1 moves
+Already in Vehicle.tsx. Verify with React DevTools Profiler.
+Reanimated worklets on UI thread
+Zero JS thread involvement during 60hz drag
+All onUpdate logic in Gesture.Pan() is a worklet automatically.
+Zustand selector subscriptions
+HUD only re-renders on moveCount change, not full store change
+const moves = useGameStore(s => s.moveCount); — never destructure full store.
+GameGrid as static component
+Grid background renders once and never updates
+Wrap in React.memo with no props. Use a single View with border lines, no SVG.
+Occupancy map rebuilt on commit only
+Collision check is O(1) during drag (no map rebuild)
+buildOccupancyMap() called only inside MovementSystem after commit.
+Sound pool preload
+Zero async overhead on play — sounds are pre-buffered
+Create Sound objects in soundManager.ts at app launch and keep refs alive.
+Hermes + New Architecture
+~30% JS execution speedup on Hermes vs V8
+Enabled by default in Expo SDK 52. Check hermes: true in app.json.
+Image assets as WebP
+40-60% size reduction vs PNG with identical visual quality
+Convert all sprites with cwebp -q 85. Max dimension 512x512.
+FlatList for Level Select
+Only renders visible level cards, not all 60
+Use FlatList with numColumns={3}, keyExtractor, and getItemLayout.
+CRITICAL
+Never call setState(), Zustand set(), or any state mutation from inside a Reanimated worklet
+(onUpdate). All state updates must go through runOnJS(). State mutations from worklets
+silently fail in release builds.
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 33
+20. Testing Strategy — Unit, E2E, Device
+Unit Tests (Jest)
+collision.test.ts
+// src/utils/__tests__/collision.test.ts
+import { canMove } from '../collision';
+import { buildOccupancyMap } from '../gridUtils';
+const emptyGrid = Array.from({ length: 6 }, () => Array(6).fill(0));
+const wallGrid = emptyGrid.map((row, r) =>
+row.map((v, c) => (r === 2 && c === 4 ? 2 : v)) // wall at [2][4]
+);
+describe('canMove', () => {
+const vehicle = { id: 't', x: 0, y: 2, direction: 'horizontal', length: 2,
+color: '#f00', isTarget: true };
+it('returns requested steps when path is clear', () => {
+const occ = buildOccupancyMap([vehicle]);
+expect(canMove(vehicle, 2, buildOccupancyMap([]), emptyGrid)).toBe(2);
+});
+it('stops before wall', () => {
+expect(canMove(vehicle, 4, buildOccupancyMap([]), wallGrid)).toBe(2);
+});
+it('stops before another vehicle', () => {
+const blocker = { id: 'b', x: 3, y: 2, direction: 'vertical', length: 2,
+color: '#00f', isTarget: false };
+expect(canMove(vehicle, 3, buildOccupancyMap([blocker]), emptyGrid)).toBe(1);
+});
+it('returns 0 when immediately blocked', () => {
+const blocker = { id: 'b', x: 2, y: 2, direction: 'vertical', length: 1,
+color: '#00f', isTarget: false };
+expect(canMove(vehicle, 1, buildOccupancyMap([blocker]), emptyGrid)).toBe(0);
+});
+});
+E2E Tests (Detox)
+e2e/gameFlow.test.ts
+// e2e/gameFlow.test.ts
+describe('Game flow', () => {
+beforeAll(async () => {
+await device.launchApp();
+});
+it('opens level 1 and completes it via drag', async () => {
+await element(by.text('Play')).tap();
+await element(by.id('level-card-1')).tap();
+// Drag target car to right
+await element(by.id('vehicle-target'))
+.swipe('right', 'fast', 0.8);
+// Win screen appears
+await expect(element(by.id('win-screen'))).toBeVisible();
+await expect(element(by.id('stars-display'))).toBeVisible();
+});
+it('undo button restores previous position', async () => {
+await element(by.id('level-card-1')).tap();
+await element(by.id('vehicle-v1')).swipe('down', 'slow', 0.3);
+await element(by.id('undo-button')).tap();
+// v1 should be back at original y (checked via testID + position)
+});
+});
+Device Test Matrix
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 34
+Device
+RAM
+Android
+Test focus
+Samsung Galaxy A10
+2 GB
+Android 9
+60 FPS baseline, gesture feel
+Pixel 3a
+4 GB
+Android 12
+Animation smoothness, ad display
+Redmi 9
+3 GB
+Android 10
+Level load time, MMKV restore
+Samsung Galaxy A52
+4 GB
+Android 13
+Notch/cutout safe area layout
+Android Emulator x86
+—
+Android 14
+CI pipeline, automated Detox
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 35
+21. Build, Sign & Release to Google Play
+Build Commands
+Build & sign
+# Generate Android release keystore (once)
+keytool -genkey -v -keystore traffic-jam.keystore \
+-alias traffic-jam -keyalg RSA -keysize 2048 \
+-validity 10000
+# Set credentials in eas.json for EAS Build
+# OR add to gradle for local build:
+# android/gradle.properties:
+# MYAPP_UPLOAD_STORE_FILE=traffic-jam.keystore
+# MYAPP_UPLOAD_KEY_ALIAS=traffic-jam
+# MYAPP_UPLOAD_STORE_PASSWORD=<password>
+# MYAPP_UPLOAD_KEY_PASSWORD=<password>
+# Build AAB via EAS (recommended for Play Store)
+eas build --platform android --profile production
+# Or local build (requires Android Studio)
+cd android && ./gradlew bundleRelease
+# Verify APK size
+bundletool build-apks --bundle=app.aab --output=app.apks
+bundletool get-size total --apks=app.apks
+app.json Key Fields
+app.json
+// app.json (relevant sections)
+{
+"expo": {
+"name": "Traffic Jam Puzzle",
+"slug": "traffic-jam-puzzle",
+"version": "1.0.0",
+"android": {
+"package": "com.yourname.trafficjam",
+"versionCode": 1,
+"adaptiveIcon": { "foregroundImage": "./assets/icon-fg.png" },
+"googleMobileAdsAppId": "ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX",
+"permissions": []
+},
+"plugins": [
+["react-native-google-mobile-ads", {
+"androidAppId": "ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX"
+}]
+]
+}
+}
+Play Store Checklist
+ App icon: 512×512 PNG, no alpha
+ Feature graphic: 1024×500 PNG
+ Screenshots: min 2 phone screenshots (1080×1920)
+ Short description: 80 chars max
+ Full description: include 'puzzle', 'parking', 'traffic', 'offline'
+ Privacy policy URL: required for AdMob
+ Content rating: complete IARC questionnaire (Everyone)
+ Data safety form: declare MMKV local storage, AdMob data usage
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 36
+ Staged rollout: start at 10% — watch crash-free rate in Firebase
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 37
+22. Implementation Milestones
+8 weeks, solo developer, full-time. Each milestone is dependency-ordered. The checkpoint is a concrete, testable
+condition — not a feeling.
+Week 1
+Prototype — draggable cars
+ Expo project bootstrapped, all libraries installed and linked
+ Static 6×6 grid rendered from a hardcoded JSON in GameScreen
+ 3 Vehicle components draggable along their correct axis (no animation yet — snap to grid)
+ Axis lock verified: horizontal cars cannot move vertically at all
+ CELL_SIZE calculated correctly on 3 different screen sizes
+ GestureHandlerRootView wrapping app correctly — no gesture warnings in console
+Checkpoint
+Two cars slide on a real Android device without crossing each other.
+Week 2–3
+Full gameplay loop
+ Full gesture → MovementSystem → CollisionSystem → commit pipeline working
+ WinConditionSystem detects target car reaching exit — dispatches WIN event
+ Undo stack (10 steps) stored in MMKV, survives app kill and restore
+ Move counter displayed in HUD, increments correctly
+ Hint system: BFS runs async, highlights next vehicle with gold border
+ All 3 ECS systems wired into GameEngine, running at 60 FPS in Flipper
+Checkpoint
+A complete level solved from start to win screen; undo reverses last move; hint highlights correct
+vehicle.
+Week 4
+30 levels + JSON loader
+ Level JSON schema finalised, TypeScript types match exactly
+ 30 hand-crafted levels, all passing BFS solvability check (0 failures)
+ Difficulty curve confirmed: levels 1–10 solvable in under 30 seconds by a new player
+ Dynamic level loader reads from src/levels/index.ts registry
+ 3-star thresholds set per level, calcStars() unit tested
+ Level Select screen shows 30 cards with stars and lock state from MMKV
+Checkpoint
+Play through all 30 levels end-to-end; every level solvable; stars award at correct thresholds.
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 38
+Week 5
+Animation, screens & polish
+ withSpring animation on all car movements — feels responsive and snappy
+ Win confetti particle burst plays on level complete
+ Animated sequential star reveal on Win screen (300ms between stars)
+ All 6 screens built and navigable: Menu, LevelSelect, Game, Win, Pause, Settings
+ React Navigation 7 native stack — transitions are native platform animations
+ Safe area insets handled on all screen sizes including notched devices
+ Sound effects playing: slide SFX, bump SFX, win jingle, star chime
+Checkpoint
+Full screen flow Menu → Level → Win → Next Level feels polished; runs at 60 FPS throughout.
+Week 6
+Ads + progress persistence
+ AdMob production unit IDs integrated, test device registered in AdMob dashboard
+ Interstitial preloaded at launch, shown after every 3rd level completion
+ Rewarded ad unlocks hint — onReward callback calls setHint() in store
+ Banner ad displayed at bottom of Level Select screen
+ All 30 level progress persists across app restarts (stars, unlock state)
+ Daily challenge returns correct level based on day-of-year
+ No ad-related crashes on Samsung A10 running for 30 minutes
+Checkpoint
+Ad flow tested on physical device; interstitial shows correctly; progress survives force-kill.
+Week 7
+60 levels + device testing
+ 30 additional levels added (levels 31–60, expert difficulty — minMoves > 15)
+ BFS validator run on all 60 levels — zero unsolvable levels
+ Flipper confirms sustained 60 FPS on Samsung A10 through 10 consecutive levels
+ Detox E2E suite: game flow, undo, hint, win screen — all passing
+ Jest unit tests: canMove (8 cases), buildOccupancyMap (4 cases), calcStars (6 cases)
+ APK size verified < 50 MB via bundletool
+ Memory profiler: no leaks after 60 level completions
+Checkpoint
+All 60 levels pass BFS; 60 FPS on A10; all tests green; APK < 50 MB.
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 39
+Week 8
+Polish & release
+ App icon (512×512) and splash screen finalised, tested on all target devices
+ All 4 SFX files polished and volume-balanced
+ Google Play store listing complete: description, screenshots, feature graphic
+ Privacy policy published at public URL (required for AdMob GDPR consent)
+ Release AAB signed with production keystore and uploaded to Play Console
+ Staged rollout to 10% of users — Firebase Crashlytics monitoring active
+ Respond to first user reviews within 24 hours
+Checkpoint
+App live on Google Play Store, crash-free rate > 99.5% after 48 hours.
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 40
+23. Challenges, Solutions & Edge Cases
+Challenge
+Root cause
+Solution
+Gesture conflict — tap on a vehicle behind another
+GestureDetector areas overlap when vehicles are adjacent
+Use simultaneousWithExternalGesture() to allow parent scroll AND vehicle drag. Each vehicle's GestureDetector is fully independent.
+Vehicle teleports on fast swipe
+High velocity translationX/Y overshoots grid on low-end devices
+Clamp sharedX/Y to grid bounds in onUpdate. Never trust raw translationX — always clamp.
+Undo restores wrong position after app restart
+Zustand store initialises from JSON but MMKV undo stack may be stale
+Store levelId in the MMKV key: undo_{levelId}. Clear stack on new game start.
+BFS hint freezes UI on hard levels
+BFS explores thousands of states synchronously on JS thread
+Run in setTimeout(fn, 0) to yield to UI. Cap at 5000 states. Show spinner on hint button.
+Banner ad shifts game content up
+Banner inserts height into layout, pushing grid offscreen
+Add banner height to gridOffsetY calculation. Use onLayout callback on banner.
+Win triggered mid-drag
+WinConditionSystem runs every frame including during drag
+Add a isDragging flag to the engine. WinConditionSystem skips check when isDragging === true.
+Sound plays with 200ms delay on first call
+expo-av loads sound lazily on first createAsync call
+Preload all sounds at app launch in soundManager.ts and keep Sound objects alive in module scope.
+Level JSON fails to parse silently
+JSON with a typo (missing comma, wrong key) throws in require() at runtime
+Run a build-time JSON validator script (scripts/validateLevels.ts) as a pre-commit hook.
+
+React Native Traffic Parking Puzzle Game  ·  Implementation Guide v3.1
+Page 41
+24. Phase 2 Roadmap
+These features are out of scope for the v1.0 release but should be architected for from day one. Notes below explain
+the prep work required during the initial 8 weeks to avoid major refactoring in Phase 2.
+Feature
+Phase 2 scope
+Prep in Phase 1
+Daily challenge
+Server-seeded level rotated every 24 hours. Leaderboard for fewest moves.
+getDailyLevel() already in levels/index.ts. Use day-of-year seed. Add API endpoint in Phase 2.
+Car skins (IAP)
+Cosmetic skin pack for $1.99. 5 skin sets, each changing all non-target car colours.
+VehicleData.color is already a prop. Skin system is a color map lookup — no Vehicle changes needed.
+Level editor
+Internal tool (web app) for designing and BFS-validating new levels.
+bfsSolve() is pure — can run in Node.js. Extract to shared package for web use.
+Cloud sync
+Google Play Games save state — sync stars across user's devices.
+Isolate all progress reads/writes to progressStore.ts. Swap MMKV backend for Play Games SDK.
+Leaderboards
+Global move-count ranking per level.
+Store bestMoves in LevelProgress already. Need a backend (Firebase Realtime DB or Supabase).
+Level pack DLC
+Additional 30-level packs as IAP ($0.99 each).
+Level registry in levels/index.ts is already dynamic. DLC packs extend the same registry.
+TIP
+Ship v1.0 with exactly 60 levels and no Phase 2 features. A clean, fast, polished core
+experience will get better reviews than a feature-heavy but buggy release. Phase 2 features
+can be added via OTA (expo-updates) without a new Play Store submission.
+
+
