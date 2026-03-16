@@ -1,40 +1,53 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import GameGrid from '../components/GameGrid';
 import Vehicle from '../components/Vehicle';
 import GameHeader from '../components/GameHeader';
 import LevelCompleteModal from '../components/LevelCompleteModal';
+import HelpModal from '../components/HelpModal';
 import { buildOccupancyMap } from '../utils/gridUtils';
 import { canMove } from '../utils/collision';
 import { hasReachedExit, calculateStars, isNewBest } from '../utils/gameLogic';
 import { playSound, initSounds } from '../utils/soundManager';
+import { MoveHistory } from '../utils/moveHistory';
+import { getHint, Hint } from '../utils/hintSystem';
 import {
   getLevelProgress,
   saveLevelProgress,
   getSoundEnabled,
   setSoundEnabled,
+  setCurrentLevelId,
 } from '../utils/storage';
-import { useGameStore } from '../store/gameStore';
+import { getLevelById, getNextLevel, isLastLevel } from '../levels';
 import { LevelData, VehicleData } from '../types';
-import { level_001 } from '../levels/level_001';
 
-const GRID_OFFSET_Y = 100; // Hardcoded for this milestone check
+const GRID_OFFSET_Y = 100;
 
-export default function GameScreen() {
-  const [level] = useState<LevelData>(level_001 as LevelData);
+interface Props {
+  navigation: any;
+  route: any;
+}
+
+export default function GameScreen({ navigation, route }: Props) {
+  const levelId = route.params?.levelId || 1;
+  const [level, setLevel] = useState<LevelData>(getLevelById(levelId)!);
   const [vehicles, setVehicles] = useState<VehicleData[]>(level.vehicles);
-  const [moveCount, setMoveCount] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [starsEarned, setStarsEarned] = useState(0);
   const [isSoundEnabled, setIsSoundEnabled] = useState(getSoundEnabled());
   const [showModal, setShowModal] = useState(false);
   const [isNewBestScore, setIsNewBestScore] = useState(false);
+  const [hintedVehicleId, setHintedVehicleId] = useState<string | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
+  
+  const moveHistory = useRef(new MoveHistory()).current;
 
   // Initialize sounds on mount
   useEffect(() => {
     initSounds();
-  }, []);
+    setCurrentLevelId(levelId);
+  }, [levelId]);
 
   // Check win condition after every move
   useEffect(() => {
@@ -44,14 +57,12 @@ export default function GameScreen() {
   }, [vehicles, isCompleted]);
 
   const handleLevelComplete = useCallback(() => {
-    // Calculate stars
+    const moveCount = moveHistory.getMoveCount();
     const stars = calculateStars(moveCount, level.stars);
     
-    // Check if new best
     const previousProgress = getLevelProgress(level.id);
     const isNewBestScore = isNewBest(moveCount, previousProgress?.bestMoves || null);
     
-    // Save progress
     saveLevelProgress({
       levelId: level.id,
       completed: true,
@@ -59,66 +70,97 @@ export default function GameScreen() {
       starsEarned: stars,
     });
     
-    // Play win sound
     playSound('win', isSoundEnabled);
     
-    // Update state and show modal
     setIsCompleted(true);
     setStarsEarned(stars);
     setIsNewBestScore(isNewBestScore);
     
-    // Delay modal slightly for better UX
     setTimeout(() => {
       setShowModal(true);
     }, 500);
-  }, [moveCount, level, vehicles, isSoundEnabled]);
+  }, [moveHistory, level, isSoundEnabled]);
 
   const handleMoveCommit = useCallback((vehicleId: string, steps: number) => {
-    if (isCompleted) return; // Prevent moves after completion
+    if (isCompleted) return;
     
     setVehicles(currentVehicles => {
       const vehicle = currentVehicles.find(v => v.id === vehicleId);
       if (!vehicle) return currentVehicles;
 
-      // Build map excluding the moving vehicle
       const others = currentVehicles.filter(v => v.id !== vehicleId);
       const occupancy = buildOccupancyMap(others);
-
-      // Find max steps in requested direction
       const allowedSteps = canMove(vehicle, steps, occupancy, level.backgroundGrid);
 
       if (allowedSteps !== 0) {
-        // Play move sound
         playSound('move', isSoundEnabled);
         
-        // Increment move counter
-        setMoveCount(prev => prev + 1);
+        const newX = vehicle.direction === 'horizontal' ? vehicle.x + allowedSteps : vehicle.x;
+        const newY = vehicle.direction === 'vertical' ? vehicle.y + allowedSteps : vehicle.y;
+        
+        moveHistory.addMove(vehicleId, vehicle.x, vehicle.y, newX, newY);
+        
+        // Clear hint
+        setHintedVehicleId(null);
         
         return currentVehicles.map(v => {
           if (v.id !== vehicleId) return v;
-          return {
-             ...v,
-             x: v.direction === 'horizontal' ? v.x + allowedSteps : v.x,
-             y: v.direction === 'vertical' ? v.y + allowedSteps : v.y,
-          };
+          return { ...v, x: newX, y: newY };
         });
       } else {
-        // Play invalid sound when blocked
         playSound('invalid', isSoundEnabled);
       }
 
-      return currentVehicles; // No change if blocked
+      return currentVehicles;
     });
-  }, [level, isCompleted, isSoundEnabled]);
+  }, [level, isCompleted, isSoundEnabled, moveHistory]);
+
+  const handleUndo = useCallback(() => {
+    const lastMove = moveHistory.undo();
+    if (lastMove) {
+      setVehicles(currentVehicles =>
+        currentVehicles.map(v =>
+          v.id === lastMove.vehicleId
+            ? { ...v, x: lastMove.fromX, y: lastMove.fromY }
+            : v
+        )
+      );
+      setHintedVehicleId(null);
+    }
+  }, [moveHistory]);
+
+  const handleRedo = useCallback(() => {
+    const redoMove = moveHistory.redo();
+    if (redoMove) {
+      setVehicles(currentVehicles =>
+        currentVehicles.map(v =>
+          v.id === redoMove.vehicleId
+            ? { ...v, x: redoMove.toX, y: redoMove.toY }
+            : v
+        )
+      );
+      setHintedVehicleId(null);
+    }
+  }, [moveHistory]);
+
+  const handleHint = useCallback(() => {
+    const hint: Hint | null = getHint(vehicles, level);
+    if (hint) {
+      setHintedVehicleId(hint.vehicleId);
+      // Clear hint after 3 seconds
+      setTimeout(() => setHintedVehicleId(null), 3000);
+    }
+  }, [vehicles, level]);
 
   const handleReset = useCallback(() => {
     setVehicles(level.vehicles);
-    setMoveCount(0);
+    moveHistory.clear();
     setIsCompleted(false);
     setStarsEarned(0);
     setShowModal(false);
     setIsNewBestScore(false);
-  }, [level]);
+    setHintedVehicleId(null);
+  }, [level, moveHistory]);
 
   const handleToggleSound = useCallback(() => {
     const newValue = !isSoundEnabled;
@@ -127,25 +169,49 @@ export default function GameScreen() {
   }, [isSoundEnabled]);
 
   const handleNextLevel = useCallback(() => {
-    // TODO: Load next level when multiple levels are implemented
-    // For now, just reset the current level
-    setShowModal(false);
-    handleReset();
-  }, [handleReset]);
+    const nextLevel = getNextLevel(level.id);
+    if (nextLevel) {
+      setShowModal(false);
+      setLevel(nextLevel);
+      setVehicles(nextLevel.vehicles);
+      moveHistory.clear();
+      setIsCompleted(false);
+      setStarsEarned(0);
+      setIsNewBestScore(false);
+      setHintedVehicleId(null);
+      setCurrentLevelId(nextLevel.id);
+    } else {
+      // No more levels, go back to level select
+      navigation.navigate('LevelSelect');
+    }
+  }, [level, navigation, moveHistory]);
 
+  const handleBack = useCallback(() => {
+    navigation.goBack();
+  }, [navigation]);
+const handleHelp = useCallback(() => {
+    setShowHelp(true);
+  }, []);
+
+  
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <GameHeader
         levelNumber={level.id}
-        moveCount={moveCount}
+        moveCount={moveHistory.getMoveCount()}
         optimalMoves={level.minMoves}
         isSoundEnabled={isSoundEnabled}
         onReset={handleReset}
+        onHelp={handleHelp}
         onToggleSound={handleToggleSound}
+        onBack={handleBack}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onHint={handleHint}
+        canUndo={moveHistory.canUndo()}
+        canRedo={moveHistory.canRedo()}
       />
       
-      {/* Game Board */}
       <View style={styles.board}>
         <GameGrid 
           backgroundGrid={level.backgroundGrid} 
@@ -157,21 +223,26 @@ export default function GameScreen() {
             {...v}
             gridOffsetY={GRID_OFFSET_Y}
             onMoveCommit={handleMoveCommit}
-            isHinted={false}
+            isHinted={v.id === hintedVehicleId}
           />
         ))}
       </View>
       
-      {/* Completion Modal */}
       <LevelCompleteModal
         visible={showModal}
         levelNumber={level.id}
-        moveCount={moveCount}
+        moveCount={moveHistory.getMoveCount()}
         optimalMoves={level.minMoves}
         starsEarned={starsEarned}
         isNewBest={isNewBestScore}
         onRetry={handleReset}
         onNextLevel={handleNextLevel}
+        isLastLevel={isLastLevel(level.id)}
+      />
+      
+      <HelpModal
+        visible={showHelp}
+        onClose={() => setShowHelp(false)}
       />
     </SafeAreaView>
   );

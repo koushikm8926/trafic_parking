@@ -89,9 +89,16 @@ const Vehicle = memo(({
       <Animated.View style={[
         styles.vehicle,
         { width: w - 4, height: h - 4, backgroundColor: color },
+        isTarget && styles.targetVehicle,
         isHinted && styles.hinted,
         animStyle,
-      ]} />
+      ]}>
+        {isTarget && (
+          <View style={styles.targetLabel}>
+            <View style={styles.starIcon} />
+          </View>
+        )}
+      </Animated.View>
     </GestureDetector>
   );
 });
@@ -102,11 +109,32 @@ const styles = StyleSheet.create({
     top: 2, left: 2,
     borderRadius: 6,
     elevation: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  hinted: {
-    borderWidth: 2,
+  targetVehicle: {
+    borderWidth: 3,
     borderColor: '#FFD700',
     shadowColor: '#FFD700',
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  targetLabel: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  starIcon: {
+    width: 20,
+    height: 20,
+    backgroundColor: '#FFD700',
+    transform: [{ rotate: '45deg' }],
+  },
+  hinted: {
+    borderWidth: 3,
+    borderColor: '#00FF00',
+    shadowColor: '#00FF00',
     shadowOpacity: 0.8,
     shadowRadius: 8,
   },

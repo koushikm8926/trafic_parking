@@ -16,6 +16,7 @@ interface Props {
   optimalMoves: number;
   starsEarned: number;
   isNewBest: boolean;
+  isLastLevel: boolean;
   onRetry: () => void;
   onNextLevel: () => void;
 }
@@ -27,6 +28,7 @@ export default function LevelCompleteModal({
   optimalMoves,
   starsEarned,
   isNewBest,
+  isLastLevel,
   onRetry,
   onNextLevel,
 }: Props) {
@@ -125,7 +127,7 @@ export default function LevelCompleteModal({
               activeOpacity={0.8}
             >
               <Text style={[styles.buttonText, styles.nextButtonText]}>
-                Next Level
+                {isLastLevel ? 'Level Select' : 'Next Level'}
               </Text>
             </TouchableOpacity>
           </View>
