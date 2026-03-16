@@ -12,12 +12,17 @@ import { hasReachedExit, calculateStars, isNewBest } from '../utils/gameLogic';
 import { playSound, initSounds } from '../utils/soundManager';
 import { MoveHistory } from '../utils/moveHistory';
 import { getHint, Hint } from '../utils/hintSystem';
+import { GameHaptics } from '../utils/haptics';
+import { checkAchievements } from '../utils/achievements';
 import {
   getLevelProgress,
   saveLevelProgress,
   getSoundEnabled,
   setSoundEnabled,
   setCurrentLevelId,
+  updateStatistics,
+  getStatistics,
+  saveAchievement,
 } from '../utils/storage';
 import { getLevelById, getNextLevel, isLastLevel } from '../levels';
 import { LevelData, VehicleData } from '../types';
@@ -42,6 +47,7 @@ export default function GameScreen({ navigation, route }: Props) {
   const [showHelp, setShowHelp] = useState(false);
   
   const moveHistory = useRef(new MoveHistory()).current;
+  const hintsUsedThisLevel = useRef(0);
 
   // Initialize sounds on mount
   useEffect(() => {
@@ -70,6 +76,37 @@ export default function GameScreen({ navigation, route }: Props) {
       starsEarned: stars,
     });
     
+    // Update statistics
+    const wasFirstCompletion = !previousProgress?.completed;
+    if (wasFirstCompletion) {
+      updateStatistics('levelsCompleted', 1);
+    }
+    updateStatistics('totalStars', stars);
+    
+    // Check achievements
+    const stats = getStatistics();
+    const newAchievements = checkAchievements({
+      levelsCompleted: stats.levelsCompleted,
+      totalStars: stats.totalStars,
+      threeStarLevels: 0, // Would need to calculate from all level progress
+      totalMoves: stats.totalMoves,
+      undosUsed: stats.undosUsed,
+      hintsUsed: stats.hintsUsed,
+      resetsUsed: stats.resetsUsed,
+      justCompletedLevel: wasFirstCompletion,
+      justGot3Stars: stars === 3,
+      completedInOptimal: moveCount === level.stars.three,
+      completedWithoutHints: hintsUsedThisLevel.current === 0,
+    });
+    
+    // Save newly unlocked achievements
+    newAchievements.forEach(achievementId => {
+      saveAchievement(achievementId, true);
+    });
+    
+    // Haptic feedback
+    GameHaptics.levelComplete();
+    
     playSound('win', isSoundEnabled);
     
     setIsCompleted(true);
@@ -93,6 +130,12 @@ export default function GameScreen({ navigation, route }: Props) {
       const allowedSteps = canMove(vehicle, steps, occupancy, level.backgroundGrid);
 
       if (allowedSteps !== 0) {
+        // Haptic feedback for successful move
+        GameHaptics.vehicleMove();
+        
+        // Update statistics
+        updateStatistics('totalMoves', 1);
+        
         playSound('move', isSoundEnabled);
         
         const newX = vehicle.direction === 'horizontal' ? vehicle.x + allowedSteps : vehicle.x;
@@ -108,6 +151,9 @@ export default function GameScreen({ navigation, route }: Props) {
           return { ...v, x: newX, y: newY };
         });
       } else {
+        // Haptic feedback for collision
+        GameHaptics.collision();
+        
         playSound('invalid', isSoundEnabled);
       }
 
@@ -118,6 +164,9 @@ export default function GameScreen({ navigation, route }: Props) {
   const handleUndo = useCallback(() => {
     const lastMove = moveHistory.undo();
     if (lastMove) {
+      GameHaptics.buttonPress();
+      updateStatistics('undosUsed', 1);
+      
       setVehicles(currentVehicles =>
         currentVehicles.map(v =>
           v.id === lastMove.vehicleId
@@ -132,6 +181,8 @@ export default function GameScreen({ navigation, route }: Props) {
   const handleRedo = useCallback(() => {
     const redoMove = moveHistory.redo();
     if (redoMove) {
+      GameHaptics.buttonPress();
+      
       setVehicles(currentVehicles =>
         currentVehicles.map(v =>
           v.id === redoMove.vehicleId
@@ -146,6 +197,10 @@ export default function GameScreen({ navigation, route }: Props) {
   const handleHint = useCallback(() => {
     const hint: Hint | null = getHint(vehicles, level);
     if (hint) {
+      GameHaptics.buttonPress();
+      updateStatistics('hintsUsed', 1);
+      hintsUsedThisLevel.current += 1;
+      
       setHintedVehicleId(hint.vehicleId);
       // Clear hint after 3 seconds
       setTimeout(() => setHintedVehicleId(null), 3000);
@@ -153,6 +208,9 @@ export default function GameScreen({ navigation, route }: Props) {
   }, [vehicles, level]);
 
   const handleReset = useCallback(() => {
+    GameHaptics.buttonPress();
+    updateStatistics('resetsUsed', 1);
+    
     setVehicles(level.vehicles);
     moveHistory.clear();
     setIsCompleted(false);
@@ -160,6 +218,7 @@ export default function GameScreen({ navigation, route }: Props) {
     setShowModal(false);
     setIsNewBestScore(false);
     setHintedVehicleId(null);
+    hintsUsedThisLevel.current = 0;
   }, [level, moveHistory]);
 
   const handleToggleSound = useCallback(() => {
@@ -179,6 +238,7 @@ export default function GameScreen({ navigation, route }: Props) {
       setStarsEarned(0);
       setIsNewBestScore(false);
       setHintedVehicleId(null);
+      hintsUsedThisLevel.current = 0;
       setCurrentLevelId(nextLevel.id);
     } else {
       // No more levels, go back to level select

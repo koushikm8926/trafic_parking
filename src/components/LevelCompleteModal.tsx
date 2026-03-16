@@ -8,6 +8,7 @@ import {
   Animated,
 } from 'react-native';
 import { getStarRatingText } from '../utils/gameLogic';
+import ConfettiEffect from './ConfettiEffect';
 
 interface Props {
   visible: boolean;
@@ -73,6 +74,9 @@ export default function LevelCompleteModal({
       statusBarTranslucent
     >
       <View style={styles.overlay}>
+        {/* Confetti Effect */}
+        {visible && <ConfettiEffect particleCount={40} />}
+        
         <Animated.View
           style={[
             styles.container,

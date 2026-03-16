@@ -19,6 +19,7 @@ const GameGrid = memo(({ backgroundGrid, gridOffsetY }: Props) => {
           top: gridOffsetY,
         },
       ]}
+      pointerEvents="none"
     >
       {/* Render grid cells */}
       {backgroundGrid.map((row, rIndex) =>
@@ -28,7 +29,8 @@ const GameGrid = memo(({ backgroundGrid, gridOffsetY }: Props) => {
           if (cell === 2) {
             backgroundColor = '#333'; // Wall
           } else if (cell === 3) {
-            backgroundColor = '#4CAF50'; // Exit - bright green
+            // Exit - no solid background, just border and arrow
+            backgroundColor = 'transparent';
             isExit = true;
           }
 
@@ -89,9 +91,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   exitCell: {
-    borderWidth: 3,
-    borderColor: '#2E7D32',
+    borderWidth: 4,
+    borderColor: '#4CAF50',
     borderStyle: 'dashed',
+    backgroundColor: 'rgba(76, 175, 80, 0.1)', // Very light green tint
   },
   exitArrow: {
     flex: 1,
@@ -109,7 +112,7 @@ const styles = StyleSheet.create({
     borderRightWidth: 0,
     borderTopWidth: 15,
     borderBottomWidth: 15,
-    borderLeftColor: '#FFF',
+    borderLeftColor: '#4CAF50',
     borderRightColor: 'transparent',
     borderTopColor: 'transparent',
     borderBottomColor: 'transparent',

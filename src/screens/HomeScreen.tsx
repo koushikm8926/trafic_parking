@@ -18,14 +18,32 @@ export default function HomeScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        {/* Help Button in Top Right */}
-        <TouchableOpacity
-          style={styles.helpButton}
-          onPress={() => setShowHelp(true)}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.helpButtonText}>❓</Text>
-        </TouchableOpacity>
+        {/* Top Action Buttons */}
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            style={styles.topButton}
+            onPress={() => navigation.navigate('Statistics')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.topButtonText}>📊</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={styles.topButton}
+            onPress={() => setShowHelp(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.topButtonText}>❓</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={styles.topButton}
+            onPress={() => navigation.navigate('Settings')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.topButtonText}>⚙️</Text>
+          </TouchableOpacity>
+        </View>
         
         {/* Title */}
         <Text style={styles.title}>Traffic Parking</Text>
@@ -61,11 +79,6 @@ export default function HomeScreen({ navigation }: Props) {
             }}
             activeOpacity={0.8}
           >
-      
-      <HelpModal
-        visible={showHelp}
-        onClose={() => setShowHelp(false)}
-      />
             <Text style={styles.secondaryButtonText}>Continue Level {currentLevel}</Text>
           </TouchableOpacity>
         </View>
@@ -75,6 +88,11 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.footerText}>v1.0.0</Text>
         </View>
       </View>
+      
+      <HelpModal
+        visible={showHelp}
+        onClose={() => setShowHelp(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -85,10 +103,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   content: {
-  helpButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  topBar: {
     position: 'absolute',
     top: 20,
     right: 20,
+    flexDirection: 'row',
+    gap: 12,
+  },
+  topButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -101,13 +128,8 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  helpButtonText: {
-    fontSize: 24,
-  },
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
+  topButtonText: {
+    fontSize: 22,
   },
   title: {
     fontSize: 48,

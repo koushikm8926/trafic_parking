@@ -26,6 +26,9 @@ const KEYS = {
   SOUND_ENABLED: 'sound_enabled',
   LEVEL_PROGRESS: 'level_progress',
   CURRENT_LEVEL: 'current_level',
+  ACHIEVEMENTS: 'achievements',
+  STATISTICS: 'statistics',
+  HAPTICS_ENABLED: 'haptics_enabled',
 } as const;
 
 // Type for level completion data
@@ -120,6 +123,103 @@ export function isLevelUnlocked(levelId: number): boolean {
 export function getTotalStars(): number {
   const allProgress = getAllLevelProgress();
   return Object.values(allProgress).reduce((sum, level) => sum + level.starsEarned, 0);
+}
+
+/**
+ * Achievements storage
+ */
+export function getAchievements(): Record<string, any> {
+  const json = storage.getString(KEYS.ACHIEVEMENTS);
+  if (!json) return {};
+  
+  try {
+    return JSON.parse(json);
+  } catch (error) {
+    return {};
+  }
+}
+
+export function saveAchievement(achievementId: string, data: any): void {
+  const achievements = getAchievements();
+  achievements[achievementId] = {
+    ...data,
+    unlockedAt: new Date().toISOString(),
+  };
+  storage.set(KEYS.ACHIEVEMENTS, JSON.stringify(achievements));
+}
+
+export function isAchievementUnlocked(achievementId: string): boolean {
+  const achievements = getAchievements();
+  return achievements[achievementId]?.unlocked ?? false;
+}
+
+/**
+ * Statistics storage
+ */
+export interface GameStatistics {
+  totalMoves: number;
+  totalLevelsCompleted: number;
+  totalUndos: number;
+  totalHintsUsed: number;
+  totalResets: number;
+  totalPlayTime: number; // in seconds
+  fastestLevelTime: number;
+  slowestLevelTime: number;
+}
+
+export function getStatistics(): GameStatistics {
+  const json = storage.getString(KEYS.STATISTICS);
+  if (!json) {
+    return {
+      totalMoves: 0,
+      totalLevelsCompleted: 0,
+      totalUndos: 0,
+      totalHintsUsed: 0,
+      totalResets: 0,
+      totalPlayTime: 0,
+      fastestLevelTime: Infinity,
+      slowestLevelTime: 0,
+    };
+  }
+  
+  try {
+    return JSON.parse(json);
+  } catch (error) {
+    return {
+      totalMoves: 0,
+      totalLevelsCompleted: 0,
+      totalUndos: 0,
+      totalHintsUsed: 0,
+      totalResets: 0,
+      totalPlayTime: 0,
+      fastestLevelTime: Infinity,
+      slowestLevelTime: 0,
+    };
+  }
+}
+
+export function updateStatistics(updates: Partial<GameStatistics>): void {
+  const current = getStatistics();
+  const updated = { ...current, ...updates };
+  storage.set(KEYS.STATISTICS, JSON.stringify(updated));
+}
+
+export function incrementStatistic(key: keyof GameStatistics, amount: number = 1): void {
+  const stats = getStatistics();
+  const currentValue = stats[key] as number;
+  updateStatistics({ [key]: currentValue + amount });
+}
+
+/**
+ * Haptics preference
+ */
+export function getHapticsEnabled(): boolean {
+  const value = storage.getBoolean(KEYS.HAPTICS_ENABLED);
+  return value !== undefined ? value : true; // Default to enabled
+}
+
+export function setHapticsEnabled(enabled: boolean): void {
+  storage.set(KEYS.HAPTICS_ENABLED, enabled);
 }
 
 /**

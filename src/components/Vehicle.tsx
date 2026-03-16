@@ -3,7 +3,7 @@ import React, { memo, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle,
-  withSpring, runOnJS,
+  withSpring, runOnJS, withSequence, withTiming,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { CELL_SIZE, GRID_OFFSET_X, GRID_SIZE } from '../utils/gridUtils';
@@ -27,6 +27,22 @@ const Vehicle = memo(({
   const sharedX = useSharedValue(pixelX);
   const sharedY = useSharedValue(pixelY);
   const dragStart = useSharedValue({ x: pixelX, y: pixelY });
+  const scale = useSharedValue(1);
+  const hintPulse = useSharedValue(1);
+
+  // Animate hint pulsing effect
+  useEffect(() => {
+    if (isHinted) {
+      hintPulse.value = withSequence(
+        withTiming(1.1, { duration: 300 }),
+        withTiming(1, { duration: 300 }),
+        withTiming(1.1, { duration: 300 }),
+        withTiming(1, { duration: 300 })
+      );
+    } else {
+      hintPulse.value = 1;
+    }
+  }, [isHinted]);
 
   // Sync position when committed move changes x/y props
   useEffect(() => {
@@ -37,6 +53,8 @@ const Vehicle = memo(({
   const gesture = Gesture.Pan()
     .onBegin(() => {
       dragStart.value = { x: sharedX.value, y: sharedY.value };
+      // Scale up slightly when dragging
+      scale.value = withSpring(1.05, SPRING_CONFIG);
     })
     .onUpdate((e) => {
       // Strict axis lock — ignore cross-axis delta entirely
@@ -57,6 +75,9 @@ const Vehicle = memo(({
       }
     })
     .onEnd((e) => {
+      // Scale back to normal
+      scale.value = withSpring(1, SPRING_CONFIG);
+      
       // Calculate snapped grid steps
       const delta = direction === 'horizontal'
         ? (sharedX.value - dragStart.value.x) / CELL_SIZE
@@ -78,6 +99,7 @@ const Vehicle = memo(({
     transform: [
       { translateX: sharedX.value },
       { translateY: sharedY.value },
+      { scale: scale.value * hintPulse.value },
     ],
   }));
 

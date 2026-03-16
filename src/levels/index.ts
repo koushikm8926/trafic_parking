@@ -5,6 +5,10 @@ import { level_003 } from './level_003';
 import { level_004 } from './level_004';
 import { level_005 } from './level_005';
 import { level_006 } from './level_006';
+import { level_007 } from './level_007';
+import { level_008 } from './level_008';
+import { level_009 } from './level_009';
+import { level_010 } from './level_010';
 
 export const allLevels: LevelData[] = [
   level_001,
@@ -13,6 +17,10 @@ export const allLevels: LevelData[] = [
   level_004,
   level_005,
   level_006,
+  level_007,
+  level_008,
+  level_009,
+  level_010,
 ] as LevelData[];
 
 export function getLevelById(id: number): LevelData | null {
