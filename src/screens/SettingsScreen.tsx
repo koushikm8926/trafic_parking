@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   getSoundEnabled,
   setSoundEnabled,
@@ -53,27 +54,60 @@ export default function SettingsScreen({ navigation }: Props) {
   };
   
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.backButtonText}>‹</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
-        <View style={styles.placeholder} />
+    <LinearGradient
+      colors={['#0F2027', '#203A43', '#2C5364']}
+      locations={[0, 0.5, 1]}
+      style={styles.container}
+    >
+      {/* Background decoration */}
+      <View style={styles.bgDecoration}>
+        <View style={[styles.bgCircle, { top: '10%', right: '15%', width: 100, height: 100 }]} />
+        <View style={[styles.bgCircle, { bottom: '25%', left: '10%', width: 140, height: 140 }]} />
       </View>
       
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        {/* Enhanced Header */}
+        <View style={styles.headerOuter}>
+          <LinearGradient
+            colors={['rgba(0,217,255,0.15)', 'rgba(0,180,216,0.1)', 'rgba(0,150,199,0.05)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.header}
+          >
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+            >
+              <LinearGradient
+                colors={['#FF6B6B', '#EE5A6F', '#D63447']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.backButtonGradient}
+              >
+                <Text style={styles.backButtonText}>←</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            
+            <View style={styles.titleContainer}>
+              <Text style={styles.headerEmoji}>⚙️</Text>
+              <Text style={styles.headerTitle}>SETTINGS</Text>
+            </View>
+            
+            <View style={styles.placeholder} />
+          </LinearGradient>
+        </View>
+      
       {/* Content */}
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Audio Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Audio</Text>
+          <Text style={styles.sectionTitle}>🔊 AUDIO</Text>
           
-          <View style={styles.settingRow}>
+          <LinearGradient
+            colors={['rgba(0,217,255,0.12)', 'rgba(0,180,216,0.08)']}
+            style={styles.settingRow}
+          >
             <View style={styles.settingInfo}>
               <Text style={styles.settingLabel}>Sound Effects</Text>
               <Text style={styles.settingDescription}>
@@ -83,17 +117,21 @@ export default function SettingsScreen({ navigation }: Props) {
             <Switch
               value={soundEnabled}
               onValueChange={handleToggleSound}
-              trackColor={{ false: '#ddd', true: '#4CAF50' }}
+              trackColor={{ false: '#555', true: '#4CAF50' }}
               thumbColor="#fff"
+              ios_backgroundColor="#555"
             />
-          </View>
+          </LinearGradient>
         </View>
         
         {/* Feedback Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Feedback</Text>
+          <Text style={styles.sectionTitle}>📳 FEEDBACK</Text>
           
-          <View style={styles.settingRow}>
+          <LinearGradient
+            colors={['rgba(0,217,255,0.12)', 'rgba(0,180,216,0.08)']}
+            style={styles.settingRow}
+          >
             <View style={styles.settingInfo}>
               <Text style={styles.settingLabel}>Haptic Feedback</Text>
               <Text style={styles.settingDescription}>
@@ -103,165 +141,288 @@ export default function SettingsScreen({ navigation }: Props) {
             <Switch
               value={hapticsEnabled}
               onValueChange={handleToggleHaptics}
-              trackColor={{ false: '#ddd', true: '#4CAF50' }}
+              trackColor={{ false: '#555', true: '#9C27B0' }}
               thumbColor="#fff"
+              ios_backgroundColor="#555"
             />
-          </View>
+          </LinearGradient>
         </View>
         
         {/* Data Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Data</Text>
+          <Text style={styles.sectionTitle}>💾 DATA</Text>
           
           <TouchableOpacity
-            style={styles.dangerButton}
+            style={styles.dangerButtonWrapper}
             onPress={handleResetProgress}
             activeOpacity={0.7}
           >
-            <Text style={styles.dangerButtonText}>Reset All Progress</Text>
+            <LinearGradient
+              colors={['rgba(244, 67, 54, 0.25)', 'rgba(244, 67, 54, 0.15)']}
+              style={styles.dangerButton}
+            >
+              <Text style={styles.dangerIcon}>⚠️</Text>
+              <Text style={styles.dangerButtonText}>Reset All Progress</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
         
         {/* About Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About</Text>
+          <Text style={styles.sectionTitle}>ℹ️ ABOUT</Text>
           
-          <View style={styles.aboutCard}>
-            <Text style={styles.aboutTitle}>Traffic Parking</Text>
-            <Text style={styles.aboutVersion}>Version 1.0.0</Text>
+          <LinearGradient
+            colors={['rgba(0,217,255,0.15)', 'rgba(0,180,216,0.1)', 'rgba(0,150,199,0.05)']}
+            style={styles.aboutCard}
+          >
+            <View style={styles.appIcon}>
+              <Text style={styles.appIconText}>🚗</Text>
+            </View>
+            <Text style={styles.aboutTitle}>TRAFFIC PARKING</Text>
+            <View style={styles.versionBadge}>
+              <Text style={styles.aboutVersion}>v1.0.0</Text>
+            </View>
             <Text style={styles.aboutDescription}>
-              A challenging puzzle game where you slide vehicles to clear a path for your car to escape.
+              A challenging puzzle game where you slide vehicles to clear a path for your car to escape. Master each level with optimal moves!
             </Text>
-          </View>
+          </LinearGradient>
         </View>
+        
+        <View style={{height: 40}} />
       </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+  },
+  bgDecoration: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
+  },
+  bgCircle: {
+    position: 'absolute',
+    borderRadius: 1000,
+    backgroundColor: 'rgba(0, 217, 255, 0.06)',
+  },
+  safeArea: {
+    flex: 1,
+  },
+  headerOuter: {
+    marginHorizontal: 12,
+    marginTop: 8,
+    marginBottom: 12,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#00D9FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 18,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerEmoji: {
+    fontSize: 24,
   },
   backButton: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  backButtonGradient: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   backButtonText: {
-    fontSize: 32,
-    color: '#333',
-    marginTop: -4,
+    fontSize: 26,
+    color: '#fff',
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 3,
+    textShadowColor: '#00D9FF',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 12,
   },
   placeholder: {
     width: 40,
   },
   content: {
     flex: 1,
-  },
-  section: {
-    marginTop: 24,
     paddingHorizontal: 16,
   },
+  section: {
+    marginTop: 28,
+  },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#999',
-    textTransform: 'uppercase',
-    marginBottom: 12,
-    letterSpacing: 0.5,
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#00D9FF',
+    marginBottom: 14,
+    letterSpacing: 2,
+    textShadowColor: '#00D9FF',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
   },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   settingInfo: {
     flex: 1,
-    marginRight: 16,
+    marginRight: 18,
   },
   settingLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 6,
+    letterSpacing: 0.5,
   },
   settingDescription: {
     fontSize: 13,
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.6)',
+    lineHeight: 18,
+    letterSpacing: 0.3,
+  },
+  dangerButtonWrapper: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 3,
+    borderColor: 'rgba(244, 67, 54, 0.5)',
+    shadowColor: '#F44336',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 4,
   },
   dangerButton: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 2,
-    borderColor: '#FF3B30',
+    padding: 18,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  dangerIcon: {
+    fontSize: 20,
   },
   dangerButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FF3B30',
+    fontSize: 17,
+    fontWeight: '900',
+    color: '#FF6B6B',
+    letterSpacing: 1,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   aboutCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
+    borderRadius: 20,
+    padding: 28,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    shadowColor: '#00D9FF',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  appIcon: {
+    width: 70,
+    height: 70,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    shadowColor: '#00D9FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+  },
+  appIconText: {
+    fontSize: 38,
   },
   aboutTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#D85A30',
-    marginBottom: 4,
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#00FF88',
+    marginBottom: 10,
+    letterSpacing: 2,
+    textShadowColor: '#00FF88',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 12,
+  },
+  versionBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   aboutVersion: {
-    fontSize: 14,
-    color: '#999',
-    marginBottom: 12,
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontWeight: '800',
+    letterSpacing: 1,
   },
   aboutDescription: {
     fontSize: 14,
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.75)',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
+    letterSpacing: 0.3,
+    fontWeight: '500',
   },
 });

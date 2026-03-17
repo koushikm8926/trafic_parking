@@ -87,7 +87,7 @@ export default function LevelCompleteModal({
           ]}
         >
           <LinearGradient
-            colors={['#1a1a2e', '#16213e', '#0f3460']}
+            colors={['#0F2027', '#203A43', '#2C5364']}
             style={styles.gradientContainer}
           >
             {/* Title */}
@@ -98,7 +98,9 @@ export default function LevelCompleteModal({
             
             {/* Star Rating Text */}
             <LinearGradient
-              colors={starsEarned === 3 ? ['#FFD700', '#FFA500'] : ['rgba(76, 175, 80, 0.3)', 'rgba(46, 204, 113, 0.2)']}
+              colors={starsEarned === 3 ? ['#FFD700', '#FFA500', '#FF8C00'] : ['rgba(76, 175, 80, 0.4)', 'rgba(46, 204, 113, 0.3)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
               style={styles.ratingBadge}
             >
               <Text style={styles.ratingText}>
@@ -135,7 +137,9 @@ export default function LevelCompleteModal({
             {/* New Best Badge */}
             {isNewBest && (
               <LinearGradient
-                colors={['#FFD700', '#FFA500']}
+                colors={['#FFD700', '#FFA500', '#FF8C00']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
                 style={styles.newBestBadge}
               >
                 <Text style={styles.newBestText}>🏆 NEW BEST SCORE!</Text>
@@ -150,10 +154,12 @@ export default function LevelCompleteModal({
                 activeOpacity={0.8}
               >
                 <LinearGradient
-                  colors={['rgba(255, 255, 255, 0.15)', 'rgba(255, 255, 255, 0.05)']}
+                  colors={['rgba(255, 255, 255, 0.2)', 'rgba(255, 255, 255, 0.12)', 'rgba(255, 255, 255, 0.06)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
                   style={styles.button}
                 >
-                  <Text style={styles.buttonText}>↻ Retry</Text>
+                  <Text style={styles.buttonText}>↻ RETRY</Text>
                 </LinearGradient>
               </TouchableOpacity>
               
@@ -163,11 +169,13 @@ export default function LevelCompleteModal({
                 activeOpacity={0.8}
               >
                 <LinearGradient
-                  colors={['#4CAF50', '#45a049']}
+                  colors={['#00FF88', '#00D96C', '#00B359']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
                   style={styles.button}
                 >
                   <Text style={[styles.buttonText, styles.nextButtonText]}>
-                    {isLastLevel ? '🏠 Home' : '→ Next'}
+                    {isLastLevel ? '🏠 HOME' : '→ NEXT'}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -182,145 +190,179 @@ export default function LevelCompleteModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   container: {
-    width: '85%',
-    maxWidth: 400,
-    borderRadius: 24,
+    width: '88%',
+    maxWidth: 420,
+    borderRadius: 28,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: '#FFD700',
     shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.5,
-    shadowRadius: 30,
-    elevation: 15,
+    shadowOpacity: 0.6,
+    shadowRadius: 35,
+    elevation: 20,
   },
   gradientContainer: {
-    padding: 30,
+    padding: 35,
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: 'rgba(255, 215, 0, 0.5)',
-    borderRadius: 24,
+    borderColor: 'rgba(0, 217, 255, 0.6)',
+    borderRadius: 28,
   },
   title: {
-    fontSize: 26,
+    fontSize: 30,
     fontWeight: '900',
-    color: '#FFD700',
-    marginBottom: 20,
-    letterSpacing: 1,
+    color: '#00FF88',
+    marginBottom: 24,
+    letterSpacing: 2,
     textAlign: 'center',
+    textShadowColor: '#00FF88',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 15,
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    gap: 14,
+    marginBottom: 24,
+    paddingVertical: 10,
+  },
+  star: {
+    fontSize: 58,
+  },
+  starFilled: {
+    color: '#FFD700',
+    textShadowColor: '#FFD700',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 15,
+  },
+  starEmpty: {
+    color: '#333',
+  },
+  ratingBadge: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+    marginBottom: 24,
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  ratingText: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: 2,
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
-  starsContainer: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
-  },
-  star: {
-    fontSize: 52,
-  },
-  starFilled: {
-    color: '#FFD700',
-    textShadowColor: 'rgba(255, 215, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
-  },
-  starEmpty: {
-    color: '#444',
-  },
-  ratingBadge: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    marginBottom: 20,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  ratingText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#ffffff',
-    letterSpacing: 1,
-  },
   statsContainer: {
     width: '100%',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(0, 217, 255, 0.1)',
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 24,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 217, 255, 0.3)',
+    shadowColor: '#00D9FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   statRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    alignItems: 'center',
+    marginBottom: 14,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   statLabel: {
-    fontSize: 16,
+    fontSize: 17,
     color: '#B0C4DE',
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   statValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '900',
     color: '#ffffff',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   newBestBadge: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
-    marginBottom: 20,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 28,
+    marginBottom: 24,
+    borderWidth: 3,
+    borderColor: '#FFF',
     shadowColor: '#FFD700',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.7,
+    shadowRadius: 12,
+    elevation: 10,
   },
   newBestText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '900',
     color: '#1a1a2e',
-    letterSpacing: 1,
+    letterSpacing: 2,
   },
   buttonContainer: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 14,
     width: '100%',
   },
   retryButtonWrapper: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 18,
     overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 4,
   },
   nextButtonWrapper: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 18,
     overflow: 'hidden',
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
     shadowColor: '#4CAF50',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.7,
+    shadowRadius: 12,
+    elevation: 8,
   },
   button: {
-    paddingVertical: 16,
+    paddingVertical: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
   buttonText: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 18,
+    fontWeight: '800',
     color: '#ffffff',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   nextButtonText: {
     fontWeight: '900',
+    letterSpacing: 1.5,
   },
 });

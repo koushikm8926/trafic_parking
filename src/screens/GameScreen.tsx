@@ -303,10 +303,16 @@ const handleHelp = useCallback(() => {
   
   return (
     <LinearGradient
-      colors={['#87CEEB', '#B0C4DE', '#8B9DAF', '#5D6B7A', '#3D3D3D']}
-      locations={[0, 0.2, 0.4, 0.55, 0.7]}
+      colors={['#0F2027', '#203A43', '#2C5364', '#3B5366']}
+      locations={[0, 0.3, 0.6, 1]}
       style={styles.container}
     >
+      {/* Subtle background pattern */}
+      <View style={styles.backgroundPattern}>
+        <View style={[styles.bgCircle, { top: '15%', right: '15%', width: 120, height: 120 }]} />
+        <View style={[styles.bgCircle, { bottom: '20%', left: '10%', width: 160, height: 160 }]} />
+      </View>
+      
       <SafeAreaView style={styles.safeArea}>
         <GameHeader
           levelNumber={level.id}
@@ -324,11 +330,12 @@ const handleHelp = useCallback(() => {
           canRedo={moveHistory.canRedo()}
         />
         
-        {/* Decorative landscape strip above board */}
+        {/* Enhanced decorative landscape strip */}
         <View style={styles.landscapeStrip}>
           <View style={styles.grassPatch} />
           <View style={[styles.grassPatch, styles.grassPatch2]} />
           <View style={[styles.grassPatch, styles.grassPatch3]} />
+          <View style={styles.roadMarking} />
         </View>
         
         <View style={styles.board}>
@@ -377,32 +384,56 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  backgroundPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
+  },
+  bgCircle: {
+    position: 'absolute',
+    borderRadius: 1000,
+    backgroundColor: 'rgba(0, 217, 255, 0.04)',
+  },
   safeArea: {
     flex: 1,
   },
   landscapeStrip: {
-    height: 6,
+    height: 8,
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
     marginHorizontal: 20,
+    marginBottom: 8,
   },
   grassPatch: {
-    width: 40,
-    height: 4,
+    width: 45,
+    height: 5,
     backgroundColor: '#4CAF50',
-    borderRadius: 2,
-    opacity: 0.6,
+    borderRadius: 3,
+    opacity: 0.7,
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
   },
   grassPatch2: {
-    width: 55,
+    width: 60,
     backgroundColor: '#66BB6A',
-    opacity: 0.5,
+    opacity: 0.6,
   },
   grassPatch3: {
-    width: 35,
+    width: 38,
     backgroundColor: '#388E3C',
-    opacity: 0.4,
+    opacity: 0.5,
+  },
+  roadMarking: {
+    width: 30,
+    height: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 1,
   },
   board: {
     flex: 1,
