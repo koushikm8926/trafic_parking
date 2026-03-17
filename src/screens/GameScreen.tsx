@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import GameGrid from '../components/GameGrid';
 import Vehicle from '../components/Vehicle';
 import GameHeader from '../components/GameHeader';
@@ -301,68 +302,107 @@ const handleHelp = useCallback(() => {
 
   
   return (
-    <SafeAreaView style={styles.container}>
-      <GameHeader
-        levelNumber={level.id}
-        moveCount={moveHistory.getMoveCount()}
-        optimalMoves={level.minMoves}
-        isSoundEnabled={isSoundEnabled}
-        onReset={handleReset}
-        onHelp={handleHelp}
-        onToggleSound={handleToggleSound}
-        onBack={handleBack}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
-        onHint={handleHint}
-        canUndo={moveHistory.canUndo()}
-        canRedo={moveHistory.canRedo()}
-      />
-      
-      <View style={styles.board}>
-        <GameGrid 
-          backgroundGrid={level.backgroundGrid} 
-          gridOffsetY={GRID_OFFSET_Y} 
+    <LinearGradient
+      colors={['#87CEEB', '#B0C4DE', '#8B9DAF', '#5D6B7A', '#3D3D3D']}
+      locations={[0, 0.2, 0.4, 0.55, 0.7]}
+      style={styles.container}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <GameHeader
+          levelNumber={level.id}
+          moveCount={moveHistory.getMoveCount()}
+          optimalMoves={level.minMoves}
+          isSoundEnabled={isSoundEnabled}
+          onReset={handleReset}
+          onHelp={handleHelp}
+          onToggleSound={handleToggleSound}
+          onBack={handleBack}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          onHint={handleHint}
+          canUndo={moveHistory.canUndo()}
+          canRedo={moveHistory.canRedo()}
         />
-        {vehicles.map(v => (
-          <Vehicle
-            key={v.id}
-            {...v}
-            gridOffsetY={GRID_OFFSET_Y}
-            onMoveCommit={handleMoveCommit}
-            isHinted={v.id === hintedVehicleId}
+        
+        {/* Decorative landscape strip above board */}
+        <View style={styles.landscapeStrip}>
+          <View style={styles.grassPatch} />
+          <View style={[styles.grassPatch, styles.grassPatch2]} />
+          <View style={[styles.grassPatch, styles.grassPatch3]} />
+        </View>
+        
+        <View style={styles.board}>
+          <GameGrid 
+            backgroundGrid={level.backgroundGrid} 
+            gridOffsetY={GRID_OFFSET_Y} 
           />
-        ))}
-      </View>
-      
-      <LevelCompleteModal
-        visible={showModal}
-        levelNumber={level.id}
-        moveCount={moveHistory.getMoveCount()}
-        optimalMoves={level.minMoves}
-        starsEarned={starsEarned}
-        isNewBest={isNewBestScore}
-        onRetry={handleReset}
-        onNextLevel={handleNextLevel}
-        isLastLevel={isLastLevel(level.id)}
-      />
-      
-      <HelpModal
-        visible={showHelp}
-        onClose={() => setShowHelp(false)}
-      />
-      
-      <AchievementToast
-        achievement={achievementToShow}
-        onDismiss={() => setAchievementToShow(null)}
-      />
-    </SafeAreaView>
+          {vehicles.map(v => (
+            <Vehicle
+              key={v.id}
+              {...v}
+              gridOffsetY={GRID_OFFSET_Y}
+              onMoveCommit={handleMoveCommit}
+              isHinted={v.id === hintedVehicleId}
+            />
+          ))}
+        </View>
+        
+        <LevelCompleteModal
+          visible={showModal}
+          levelNumber={level.id}
+          moveCount={moveHistory.getMoveCount()}
+          optimalMoves={level.minMoves}
+          starsEarned={starsEarned}
+          isNewBest={isNewBestScore}
+          onRetry={handleReset}
+          onNextLevel={handleNextLevel}
+          isLastLevel={isLastLevel(level.id)}
+        />
+        
+        <HelpModal
+          visible={showHelp}
+          onClose={() => setShowHelp(false)}
+        />
+        
+        <AchievementToast
+          achievement={achievementToShow}
+          onDismiss={() => setAchievementToShow(null)}
+        />
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+  },
+  safeArea: {
+    flex: 1,
+  },
+  landscapeStrip: {
+    height: 6,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    marginHorizontal: 20,
+  },
+  grassPatch: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#4CAF50',
+    borderRadius: 2,
+    opacity: 0.6,
+  },
+  grassPatch2: {
+    width: 55,
+    backgroundColor: '#66BB6A',
+    opacity: 0.5,
+  },
+  grassPatch3: {
+    width: 35,
+    backgroundColor: '#388E3C',
+    opacity: 0.4,
   },
   board: {
     flex: 1,

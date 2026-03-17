@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Animated,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { getStarRatingText } from '../utils/gameLogic';
 import ConfettiEffect from './ConfettiEffect';
 
@@ -85,56 +86,93 @@ export default function LevelCompleteModal({
             },
           ]}
         >
-          {/* Title */}
-          <Text style={styles.title}>Level Complete!</Text>
-          
-          {/* Stars */}
-          {renderStars()}
-          
-          {/* Star Rating Text */}
-          <Text style={styles.ratingText}>
-            {getStarRatingText(starsEarned)}
-          </Text>
-          
-          {/* Stats */}
-          <View style={styles.statsContainer}>
-            <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Moves:</Text>
-              <Text style={styles.statValue}>{moveCount}</Text>
-            </View>
-            <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Optimal:</Text>
-              <Text style={styles.statValue}>{optimalMoves}</Text>
-            </View>
-          </View>
-          
-          {/* New Best Badge */}
-          {isNewBest && (
-            <View style={styles.newBestBadge}>
-              <Text style={styles.newBestText}>🏆 New Best!</Text>
-            </View>
-          )}
-          
-          {/* Buttons */}
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[styles.button, styles.retryButton]}
-              onPress={onRetry}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.buttonText}>Retry</Text>
-            </TouchableOpacity>
+          <LinearGradient
+            colors={['#1a1a2e', '#16213e', '#0f3460']}
+            style={styles.gradientContainer}
+          >
+            {/* Title */}
+            <Text style={styles.title}>🏁 LEVEL COMPLETE!</Text>
             
-            <TouchableOpacity
-              style={[styles.button, styles.nextButton]}
-              onPress={onNextLevel}
-              activeOpacity={0.8}
+            {/* Stars */}
+            {renderStars()}
+            
+            {/* Star Rating Text */}
+            <LinearGradient
+              colors={starsEarned === 3 ? ['#FFD700', '#FFA500'] : ['rgba(76, 175, 80, 0.3)', 'rgba(46, 204, 113, 0.2)']}
+              style={styles.ratingBadge}
             >
-              <Text style={[styles.buttonText, styles.nextButtonText]}>
-                {isLastLevel ? 'Level Select' : 'Next Level'}
+              <Text style={styles.ratingText}>
+                {getStarRatingText(starsEarned)}
               </Text>
-            </TouchableOpacity>
-          </View>
+            </LinearGradient>
+            
+            {/* Stats */}
+            <View style={styles.statsContainer}>
+              <View style={styles.statRow}>
+                <Text style={styles.statLabel}>Your Moves:</Text>
+                <Text style={[
+                  styles.statValue, 
+                  { color: moveCount <= optimalMoves ? '#4CAF50' : '#FF9800' }
+                ]}>
+                  {moveCount}
+                </Text>
+              </View>
+              <View style={styles.statRow}>
+                <Text style={styles.statLabel}>Target:</Text>
+                <Text style={styles.statValue}>{optimalMoves}</Text>
+              </View>
+              <View style={styles.statRow}>
+                <Text style={styles.statLabel}>Efficiency:</Text>
+                <Text style={[
+                  styles.statValue,
+                  { color: moveCount <= optimalMoves ? '#4CAF50' : '#FF9800' }
+                ]}>
+                  {Math.round((optimalMoves / moveCount) * 100)}%
+                </Text>
+              </View>
+            </View>
+            
+            {/* New Best Badge */}
+            {isNewBest && (
+              <LinearGradient
+                colors={['#FFD700', '#FFA500']}
+                style={styles.newBestBadge}
+              >
+                <Text style={styles.newBestText}>🏆 NEW BEST SCORE!</Text>
+              </LinearGradient>
+            )}
+            
+            {/* Buttons */}
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={styles.retryButtonWrapper}
+                onPress={onRetry}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={['rgba(255, 255, 255, 0.15)', 'rgba(255, 255, 255, 0.05)']}
+                  style={styles.button}
+                >
+                  <Text style={styles.buttonText}>↻ Retry</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.nextButtonWrapper}
+                onPress={onNextLevel}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={['#4CAF50', '#45a049']}
+                  style={styles.button}
+                >
+                  <Text style={[styles.buttonText, styles.nextButtonText]}>
+                    {isLastLevel ? '🏠 Home' : '→ Next'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
         </Animated.View>
       </View>
     </Modal>
@@ -144,107 +182,145 @@ export default function LevelCompleteModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   container: {
     width: '85%',
     maxWidth: 400,
-    backgroundColor: '#fff',
-    borderRadius: 20,
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.5,
+    shadowRadius: 30,
+    elevation: 15,
+  },
+  gradientContainer: {
     padding: 30,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
+    borderWidth: 3,
+    borderColor: 'rgba(255, 215, 0, 0.5)',
+    borderRadius: 24,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#FFD700',
     marginBottom: 20,
+    letterSpacing: 1,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   starsContainer: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 15,
+    gap: 12,
+    marginBottom: 20,
   },
   star: {
-    fontSize: 48,
+    fontSize: 52,
   },
   starFilled: {
     color: '#FFD700',
+    textShadowColor: 'rgba(255, 215, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
   },
   starEmpty: {
-    color: '#ddd',
+    color: '#444',
+  },
+  ratingBadge: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   ratingText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#4CAF50',
-    marginBottom: 20,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#ffffff',
+    letterSpacing: 1,
   },
   statsContainer: {
     width: '100%',
-    backgroundColor: '#f5f5f5',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   statRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   statLabel: {
     fontSize: 16,
-    color: '#666',
+    color: '#B0C4DE',
+    fontWeight: '600',
   },
   statValue: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#ffffff',
   },
   newBestBadge: {
-    backgroundColor: '#FFF3E0',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
     marginBottom: 20,
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    elevation: 8,
   },
   newBestText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#F57C00',
+    fontWeight: '900',
+    color: '#1a1a2e',
+    letterSpacing: 1,
   },
   buttonContainer: {
     flexDirection: 'row',
     gap: 12,
     width: '100%',
   },
-  button: {
+  retryButtonWrapper: {
     flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  nextButtonWrapper: {
+    flex: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  button: {
+    paddingVertical: 16,
     alignItems: 'center',
-  },
-  retryButton: {
-    backgroundColor: '#f0f0f0',
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  nextButton: {
-    backgroundColor: '#4CAF50',
+    justifyContent: 'center',
   },
   buttonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: '700',
+    color: '#ffffff',
+    letterSpacing: 0.5,
   },
   nextButtonText: {
-    color: '#fff',
+    fontWeight: '900',
   },
 });

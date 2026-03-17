@@ -21,17 +21,17 @@ const GameGrid = memo(({ backgroundGrid, gridOffsetY }: Props) => {
       ]}
       pointerEvents="none"
     >
-      {/* Render grid cells */}
+      {/* Parking lot cells with lines */}
       {backgroundGrid.map((row, rIndex) =>
         row.map((cell, cIndex) => {
-          let backgroundColor = 'transparent';
+          let cellStyle = styles.parkingSpace;
           let isExit = false;
+          let isWall = false;
+          
           if (cell === 2) {
-            backgroundColor = '#333'; // Wall
+            isWall = true; // Wall/obstacle
           } else if (cell === 3) {
-            // Exit - no solid background, just border and arrow
-            backgroundColor = 'transparent';
-            isExit = true;
+            isExit = true; // Exit
           }
 
           return (
@@ -44,16 +44,38 @@ const GameGrid = memo(({ backgroundGrid, gridOffsetY }: Props) => {
                   height: CELL_SIZE,
                   left: cIndex * CELL_SIZE,
                   top: rIndex * CELL_SIZE,
-                  backgroundColor,
                 },
+                !isWall && !isExit && cellStyle,
+                isWall && styles.wallCell,
                 isExit && styles.exitCell,
               ]}
             >
+              {/* Parking space markings */}
+              {!isWall && !isExit && (
+                <>
+                  <View style={styles.parkingLineTop} />
+                  <View style={styles.parkingLineLeft} />
+                </>
+              )}
+              
+              {/* Exit arrow and markings */}
               {isExit && (
-                <View style={styles.exitArrow}>
-                  <View style={styles.exitLabel}>
+                <View style={styles.exitContainer}>
+                  <View style={styles.exitArrow}>
                     <View style={styles.exitArrowShape} />
                   </View>
+                  <View style={styles.exitText}>
+                    <View style={styles.exitLineTop} />
+                    <View style={styles.exitLineBottom} />
+                  </View>
+                </View>
+              )}
+              
+              {/* Wall/Obstacle */}
+              {isWall && (
+                <View style={styles.wallPattern}>
+                  <View style={styles.wallStripe} />
+                  <View style={[styles.wallStripe, styles.wallStripe2]} />
                 </View>
               )}
             </View>
@@ -61,23 +83,8 @@ const GameGrid = memo(({ backgroundGrid, gridOffsetY }: Props) => {
         })
       )}
       
-      {/* Grid Border overlay (optional for visuals) */}
-      {Array.from({ length: GRID_SIZE + 1 }).map((_, i) => (
-        <React.Fragment key={`gridlines-${i}`}>
-          <View
-            style={[
-              styles.horizontalLine,
-              { top: i * CELL_SIZE, width: CELL_SIZE * GRID_SIZE },
-            ]}
-          />
-          <View
-            style={[
-              styles.verticalLine,
-              { left: i * CELL_SIZE, height: CELL_SIZE * GRID_SIZE },
-            ]}
-          />
-        </React.Fragment>
-      ))}
+      {/* Outer border */}
+      <View style={styles.borderFrame} />
     </View>
   );
 });
@@ -85,47 +92,119 @@ const GameGrid = memo(({ backgroundGrid, gridOffsetY }: Props) => {
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    backgroundColor: '#eee', // Board background
+    backgroundColor: '#2d2d2d', // Darker asphalt
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
+    elevation: 20,
+    borderWidth: 3,
+    borderColor: '#1a1a1a',
   },
   cell: {
     position: 'absolute',
+    backgroundColor: '#3A3A3A', // Parking space color
+  },
+  parkingSpace: {
+    backgroundColor: '#373737',
+  },
+  parkingLineTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: '#FFD700', // Bright yellow parking line
+    opacity: 0.9,
+  },
+  parkingLineLeft: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: 3,
+    backgroundColor: '#FFD700',
+    opacity: 0.9,
+  },
+  wallCell: {
+    backgroundColor: '#1a1a1a',
+    borderWidth: 2,
+    borderColor: '#FFD700',
+  },
+  wallPattern: {
+    flex: 1,
+    justifyContent: 'space-evenly',
+    padding: 6,
+  },
+  wallStripe: {
+    height: 4,
+    backgroundColor: '#FFD700',
+    opacity: 0.7,
+    borderRadius: 2,
+  },
+  wallStripe2: {
+    opacity: 0.5,
   },
   exitCell: {
+    backgroundColor: '#27AE60',
     borderWidth: 4,
-    borderColor: '#4CAF50',
-    borderStyle: 'dashed',
-    backgroundColor: 'rgba(76, 175, 80, 0.1)', // Very light green tint
+    borderColor: '#FFD700',
   },
-  exitArrow: {
+  exitContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  exitLabel: {
+  exitArrow: {
     justifyContent: 'center',
     alignItems: 'center',
   },
   exitArrowShape: {
     width: 0,
     height: 0,
-    borderLeftWidth: 20,
+    borderLeftWidth: 28,
     borderRightWidth: 0,
-    borderTopWidth: 15,
-    borderBottomWidth: 15,
-    borderLeftColor: '#4CAF50',
+    borderTopWidth: 20,
+    borderBottomWidth: 20,
+    borderLeftColor: '#FFF',
     borderRightColor: 'transparent',
     borderTopColor: 'transparent',
     borderBottomColor: 'transparent',
   },
-  horizontalLine: {
+  exitText: {
     position: 'absolute',
-    height: 1,
-    backgroundColor: '#ccc',
+    top: 6,
+    left: 6,
+    right: 6,
+    bottom: 6,
   },
-  verticalLine: {
+  exitLineTop: {
     position: 'absolute',
-    width: 1,
-    backgroundColor: '#ccc',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: '#FFF',
+  },
+  exitLineBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: '#FFF',
+  },
+  borderFrame: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+    borderRadius: 10,
   },
 });
 

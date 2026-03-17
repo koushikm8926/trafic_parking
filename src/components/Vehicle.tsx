@@ -1,6 +1,6 @@
 // src/components/Vehicle.tsx
 import React, { memo, useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle,
   withSpring, runOnJS, withSequence, withTiming,
@@ -110,14 +110,39 @@ const Vehicle = memo(({
     <GestureDetector gesture={gesture}>
       <Animated.View style={[
         styles.vehicle,
-        { width: w - 4, height: h - 4, backgroundColor: color },
+        { width: w - 6, height: h - 6, backgroundColor: color },
         isTarget && styles.targetVehicle,
         isHinted && styles.hinted,
         animStyle,
       ]}>
+        {/* Car body shine/highlight */}
+        <View style={[
+          styles.carShine,
+          direction === 'horizontal' ? styles.carShineHorizontal : styles.carShineVertical
+        ]} />
+        
+        {/* Windows */}
+        <View style={[
+          styles.windowsContainer,
+          direction === 'horizontal' ? styles.windowsHorizontal : styles.windowsVertical
+        ]}>
+          <View style={styles.window} />
+          {length > 2 && <View style={styles.window} />}
+        </View>
+        
+        {/* Headlights/Taillights */}
+        <View style={[
+          styles.lightsContainer,
+          direction === 'horizontal' ? styles.lightsHorizontal : styles.lightsVertical
+        ]}>
+          <View style={styles.light} />
+          <View style={styles.light} />
+        </View>
+        
+        {/* Target indicator */}
         {isTarget && (
-          <View style={styles.targetLabel}>
-            <View style={styles.starIcon} />
+          <View style={styles.targetBadge}>
+            <Text style={styles.targetStar}>⭐</Text>
           </View>
         )}
       </Animated.View>
@@ -128,37 +153,126 @@ const Vehicle = memo(({
 const styles = StyleSheet.create({
   vehicle: {
     position: 'absolute',
-    top: 2, left: 2,
-    borderRadius: 6,
-    elevation: 3,
-    justifyContent: 'center',
-    alignItems: 'center',
+    top: 3,
+    left: 3,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+    elevation: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(0, 0, 0, 0.4)',
+    overflow: 'hidden',
   },
   targetVehicle: {
-    borderWidth: 3,
+    borderWidth: 5,
     borderColor: '#FFD700',
     shadowColor: '#FFD700',
-    shadowOpacity: 0.6,
-    shadowRadius: 6,
-    elevation: 5,
+    shadowOpacity: 1,
+    shadowRadius: 12,
+    elevation: 18,
   },
-  targetLabel: {
+  carShine: {
     position: 'absolute',
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+    borderRadius: 6,
+  },
+  carShineHorizontal: {
+    top: 6,
+    left: 10,
+    right: 10,
+    height: '35%',
+  },
+  carShineVertical: {
+    left: 6,
+    top: 10,
+    bottom: 10,
+    width: '35%',
+  },
+  windowsContainer: {
+    position: 'absolute',
+    flexDirection: 'row',
+    gap: 5,
+  },
+  windowsHorizontal: {
+    top: '25%',
+    left: '20%',
+    right: '20%',
+    height: '50%',
+  },
+  windowsVertical: {
+    flexDirection: 'column',
+    left: '25%',
+    top: '20%',
+    bottom: '20%',
+    width: '50%',
+  },
+  window: {
+    flex: 1,
+    backgroundColor: 'rgba(70, 130, 180, 0.5)',
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  lightsContainer: {
+    position: 'absolute',
+  },
+  lightsHorizontal: {
+    right: 5,
+    top: '25%',
+    bottom: '25%',
+    width: 10,
+    justifyContent: 'space-between',
+  },
+  lightsVertical: {
+    bottom: 5,
+    left: '25%',
+    right: '25%',
+    height: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  light: {
+    width: 7,
+    height: 7,
+    backgroundColor: '#FFF59D',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.3)',
+    shadowColor: '#FFEB3B',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 3,
+  },
+  targetBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#FFD700',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#FFF',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 15,
   },
-  starIcon: {
-    width: 20,
-    height: 20,
-    backgroundColor: '#FFD700',
-    transform: [{ rotate: '45deg' }],
+  targetStar: {
+    fontSize: 16,
   },
   hinted: {
-    borderWidth: 3,
-    borderColor: '#00FF00',
-    shadowColor: '#00FF00',
-    shadowOpacity: 0.8,
-    shadowRadius: 8,
+    borderWidth: 5,
+    borderColor: '#00FF88',
+    shadowColor: '#00FF88',
+    shadowOpacity: 1,
+    shadowRadius: 16,
+    elevation: 20,
   },
 });
 
