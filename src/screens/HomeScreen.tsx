@@ -91,9 +91,10 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   headerImage: {
-    width: '90%',
-    height: 150,
+    width: '80%',
+    height: 120,
   },
+
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
