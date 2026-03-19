@@ -1,11 +1,35 @@
 import React from 'react';
-import { StyleSheet, ImageBackground, View, Text, TouchableOpacity, Image } from 'react-native';
+import { StyleSheet, ImageBackground, View, Text, Image, Pressable } from 'react-native';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSpring 
+} from 'react-native-reanimated';
 
 interface Props {
   navigation: any;
 }
 
 export default function HomeScreen({ navigation }: Props) {
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: withSpring(scale.value, { damping: 10, stiffness: 120 }) }],
+    opacity: withSpring(opacity.value, { damping: 15, stiffness: 150 }),
+  }));
+
+  const handlePressIn = () => {
+    scale.value = 0.85;
+    opacity.value = 0.8;
+  };
+
+  const handlePressOut = () => {
+    scale.value = 1;
+    opacity.value = 1;
+  };
+
+
   return (
     <ImageBackground
       source={require('../../assets/home.png')}
@@ -13,16 +37,21 @@ export default function HomeScreen({ navigation }: Props) {
       resizeMode="cover"
     >
       <View style={styles.centerContainer}>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('LevelSelect')}
-          activeOpacity={0.8}
-        >
-          <Image
-            source={require('../../play.png')}
-            style={styles.playButton}
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
+        <Animated.View style={animatedStyle}>
+          <Pressable
+            onPress={() => navigation.navigate('LevelSelect')}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            hitSlop={0}
+            style={styles.pressableContainer}
+          >
+            <Image
+              source={require('../../play.png')}
+              style={styles.playButton}
+              resizeMode="contain"
+            />
+          </Pressable>
+        </Animated.View>
       </View>
 
       <View style={styles.footer}>
@@ -42,9 +71,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  pressableContainer: {
+    width: 180,
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)', // semi-transparent background for the rounded rectangular visual indicator
+    borderRadius: 12, // rounded rectangle
+  },
+
+
   playButton: {
-    width: 200,
-    height: 200,
+    width: '100%',
+    height: '100%',
   },
   footer: {
     paddingBottom: 40,
@@ -57,3 +96,5 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 });
+
+
