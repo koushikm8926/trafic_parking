@@ -33,6 +33,13 @@ export default function HomeScreen({ navigation }: Props) {
 
 
 
+  const handlePress = () => {
+    // Add a slight delay so the user can feel the button animation
+    setTimeout(() => {
+      navigation.navigate('LevelSelect');
+    }, 200);
+  };
+
   return (
     <ImageBackground
       source={require('../../assets/home.png')}
@@ -42,7 +49,7 @@ export default function HomeScreen({ navigation }: Props) {
       <View style={styles.centerContainer}>
         <Animated.View style={animatedStyle}>
           <Pressable
-            onPress={() => navigation.navigate('LevelSelect')}
+            onPress={handlePress}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
             hitSlop={0}
@@ -56,6 +63,7 @@ export default function HomeScreen({ navigation }: Props) {
           </Pressable>
         </Animated.View>
       </View>
+
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>Privacy Policy  •  Terms of Service</Text>
@@ -80,7 +88,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 16, // rounded rectangle
+    // Shadow properties
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 12,
   },
+
 
 
 
