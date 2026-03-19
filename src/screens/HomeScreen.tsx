@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, ImageBackground, View, Text, Image, Pressable } from 'react-native';
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 
-  withSpring 
+  withSpring,
+  withRepeat
 } from 'react-native-reanimated';
 
 interface Props {
@@ -28,6 +29,8 @@ export default function HomeScreen({ navigation }: Props) {
     scale.value = 1;
     opacity.value = 1;
   };
+
+
 
 
   return (
@@ -73,12 +76,12 @@ const styles = StyleSheet.create({
   },
   pressableContainer: {
     width: 240,
-    height: 75, // reduced from 100
+    height: 75,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)', // semi-transparent background for the rounded rectangular visual indicator
     borderRadius: 16, // rounded rectangle
   },
+
 
 
 
