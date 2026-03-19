@@ -46,6 +46,14 @@ export default function HomeScreen({ navigation }: Props) {
       style={styles.container}
       resizeMode="cover"
     >
+      <View style={styles.topContainer}>
+        <Image
+          source={require('../../top.png')}
+          style={styles.headerImage}
+          resizeMode="contain"
+        />
+      </View>
+
       <View style={styles.centerContainer}>
         <Animated.View style={animatedStyle}>
           <Pressable
@@ -77,6 +85,15 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
   },
+  topContainer: {
+    paddingTop: 100,
+    alignItems: 'center',
+    width: '100%',
+  },
+  headerImage: {
+    width: '90%',
+    height: 150,
+  },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -95,12 +112,6 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 12,
   },
-
-
-
-
-
-
   playButton: {
     width: '100%',
     height: '100%',
@@ -116,5 +127,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 });
+
 
 
