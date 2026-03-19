@@ -72,13 +72,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   pressableContainer: {
-    width: 180,
-    height: 80,
+    width: 240,
+    height: 75, // reduced from 100
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.15)', // semi-transparent background for the rounded rectangular visual indicator
-    borderRadius: 12, // rounded rectangle
+    borderRadius: 16, // rounded rectangle
   },
+
+
 
 
   playButton: {
