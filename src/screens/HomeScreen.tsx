@@ -98,10 +98,10 @@ const styles = StyleSheet.create({
   settingsButton: {
     position: 'absolute',
     top: 60,
-    right: 10,
+    right: 25,
     zIndex: 10,
-    width: 50,
-    height: 50,
+    width: 60,
+    height: 60,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
@@ -116,8 +116,8 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   settingsIcon: {
-    width: 50,
-    height: 50,
+    width: 60,
+    height: 60,
   },
   topContainer: {
     paddingTop: 100,
