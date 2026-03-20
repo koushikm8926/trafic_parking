@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, ImageBackground, View, Text, Image, Pressable } from 'react-native';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
   withSpring,
   withRepeat
 } from 'react-native-reanimated';
@@ -46,6 +46,16 @@ export default function HomeScreen({ navigation }: Props) {
       style={styles.container}
       resizeMode="cover"
     >
+      <Pressable
+        style={styles.settingsButton}
+        onPress={() => navigation.navigate('SettingsScreen')}
+      >
+        <Image
+          source={require('../../settings.png')}
+          style={styles.settingsIcon}
+          resizeMode="contain"
+        />
+      </Pressable>
       <View style={styles.topContainer}>
         <Image
           source={require('../../top.png')}
@@ -84,6 +94,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'space-between',
+  },
+  settingsButton: {
+    position: 'absolute',
+    top: 60,
+    right: 30,
+    zIndex: 10,
+    padding: 10, // Increased tap area
+  },
+  settingsIcon: {
+    width: 40,
+    height: 40,
   },
   topContainer: {
     paddingTop: 100,
