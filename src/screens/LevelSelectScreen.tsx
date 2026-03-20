@@ -21,6 +21,20 @@ export default function LevelSelectScreen({ navigation }: Props) {
             resizeMode="contain"
           />
         </View>
+        
+        <View style={styles.centerContainer}>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('Game', { levelId: 1 })}
+            activeOpacity={0.8}
+          >
+            <Image 
+              source={require('../../play.png')}
+              style={styles.playButton}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </View>
+
         <View style={{ flex: 1 }} />
       </SafeAreaView>
       
@@ -46,6 +60,7 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+    justifyContent: 'space-between',
   },
   headerContainer: {
     paddingTop: 40,
@@ -61,6 +76,15 @@ const styles = StyleSheet.create({
   headerImage: {
     width: '75%',
     height: 75,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playButton: {
+    width: 200,
+    height: 70,
   },
   backButtonContainer: {
     position: 'absolute',
