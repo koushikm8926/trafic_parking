@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { CELL_SIZE, GRID_SIZE, GRID_OFFSET_X } from '../utils/gridUtils';
+import { CELL_WIDTH, CELL_HEIGHT, GRID_SIZE, GRID_OFFSET_X } from '../utils/gridUtils';
 
 interface Props {
   backgroundGrid: number[][];
@@ -13,8 +13,8 @@ const GameGrid = memo(({ backgroundGrid, gridOffsetY }: Props) => {
       style={[
         styles.container,
         {
-          width: CELL_SIZE * GRID_SIZE,
-          height: CELL_SIZE * GRID_SIZE,
+          width: CELL_WIDTH * GRID_SIZE,
+          height: CELL_HEIGHT * GRID_SIZE,
           left: GRID_OFFSET_X,
           top: gridOffsetY,
         },
@@ -40,10 +40,10 @@ const GameGrid = memo(({ backgroundGrid, gridOffsetY }: Props) => {
               style={[
                 styles.cell,
                 {
-                  width: CELL_SIZE,
-                  height: CELL_SIZE,
-                  left: cIndex * CELL_SIZE,
-                  top: rIndex * CELL_SIZE,
+                  width: CELL_WIDTH,
+                  height: CELL_HEIGHT,
+                  left: cIndex * CELL_WIDTH,
+                  top: rIndex * CELL_HEIGHT,
                 },
                 !isWall && !isExit && cellStyle,
                 isWall && styles.wallCell,

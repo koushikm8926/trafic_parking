@@ -1,14 +1,12 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import GameGrid from '../components/GameGrid';
 import Vehicle from '../components/Vehicle';
-import GameHeader from '../components/GameHeader';
 import LevelCompleteModal from '../components/LevelCompleteModal';
 import HelpModal from '../components/HelpModal';
 import AchievementToast from '../components/AchievementToast';
-import { buildOccupancyMap } from '../utils/gridUtils';
+import { buildOccupancyMap, CELL_WIDTH, CELL_HEIGHT, GRID_SIZE } from '../utils/gridUtils';
 import { canMove } from '../utils/collision';
 import { hasReachedExit, calculateStars, isNewBest } from '../utils/gameLogic';
 import { playSound, initSounds } from '../utils/soundManager';
@@ -30,7 +28,9 @@ import {
 import { getLevelById, getNextLevel, isLastLevel } from '../levels';
 import { LevelData, VehicleData } from '../types';
 
-const GRID_OFFSET_Y = 100;
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const GRID_HEIGHT = CELL_HEIGHT * GRID_SIZE;
+const GRID_OFFSET_Y = Math.floor((SCREEN_HEIGHT - GRID_HEIGHT) / 2);
 
 interface Props {
   navigation: any;
@@ -302,41 +302,11 @@ const handleHelp = useCallback(() => {
 
   
   return (
-    <LinearGradient
-      colors={['#0F2027', '#203A43', '#2C5364', '#3B5366']}
-      locations={[0, 0.3, 0.6, 1]}
-      style={styles.container}
-    >
-      {/* Subtle background pattern */}
-      <View style={styles.backgroundPattern}>
-        <View style={[styles.bgCircle, { top: '15%', right: '15%', width: 120, height: 120 }]} />
-        <View style={[styles.bgCircle, { bottom: '20%', left: '10%', width: 160, height: 160 }]} />
-      </View>
-      
+    <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <GameHeader
-          levelNumber={level.id}
-          moveCount={moveHistory.getMoveCount()}
-          optimalMoves={level.minMoves}
-          isSoundEnabled={isSoundEnabled}
-          onReset={handleReset}
-          onHelp={handleHelp}
-          onToggleSound={handleToggleSound}
-          onBack={handleBack}
-          onUndo={handleUndo}
-          onRedo={handleRedo}
-          onHint={handleHint}
-          canUndo={moveHistory.canUndo()}
-          canRedo={moveHistory.canRedo()}
-        />
+
         
-        {/* Enhanced decorative landscape strip */}
-        <View style={styles.landscapeStrip}>
-          <View style={styles.grassPatch} />
-          <View style={[styles.grassPatch, styles.grassPatch2]} />
-          <View style={[styles.grassPatch, styles.grassPatch3]} />
-          <View style={styles.roadMarking} />
-        </View>
+
         
         <View style={styles.board}>
           <GameGrid 
@@ -376,64 +346,17 @@ const handleHelp = useCallback(() => {
           onDismiss={() => setAchievementToShow(null)}
         />
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  backgroundPattern: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    overflow: 'hidden',
-  },
-  bgCircle: {
-    position: 'absolute',
-    borderRadius: 1000,
-    backgroundColor: 'rgba(0, 217, 255, 0.04)',
+    backgroundColor: '#F0F4F8', // Very soft light bluish-gray
   },
   safeArea: {
     flex: 1,
-  },
-  landscapeStrip: {
-    height: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    marginHorizontal: 20,
-    marginBottom: 8,
-  },
-  grassPatch: {
-    width: 45,
-    height: 5,
-    backgroundColor: '#4CAF50',
-    borderRadius: 3,
-    opacity: 0.7,
-    shadowColor: '#4CAF50',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-  },
-  grassPatch2: {
-    width: 60,
-    backgroundColor: '#66BB6A',
-    opacity: 0.6,
-  },
-  grassPatch3: {
-    width: 38,
-    backgroundColor: '#388E3C',
-    opacity: 0.5,
-  },
-  roadMarking: {
-    width: 30,
-    height: 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 1,
   },
   board: {
     flex: 1,

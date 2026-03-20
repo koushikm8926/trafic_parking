@@ -6,7 +6,7 @@ import Animated, {
   withSpring, runOnJS, withSequence, withTiming,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { CELL_SIZE, GRID_OFFSET_X, GRID_SIZE } from '../utils/gridUtils';
+import { CELL_WIDTH, CELL_HEIGHT, GRID_OFFSET_X, GRID_SIZE } from '../utils/gridUtils';
 import { VehicleData } from '../types';
 
 interface Props extends VehicleData {
@@ -21,8 +21,8 @@ const Vehicle = memo(({
   id, x, y, direction, length, color, isTarget,
   gridOffsetY, onMoveCommit, isHinted,
 }: Props) => {
-  const pixelX = GRID_OFFSET_X + x * CELL_SIZE;
-  const pixelY = gridOffsetY + y * CELL_SIZE;
+  const pixelX = GRID_OFFSET_X + x * CELL_WIDTH;
+  const pixelY = gridOffsetY + y * CELL_HEIGHT;
 
   const sharedX = useSharedValue(pixelX);
   const sharedY = useSharedValue(pixelY);
@@ -46,8 +46,8 @@ const Vehicle = memo(({
 
   // Sync position when committed move changes x/y props
   useEffect(() => {
-    sharedX.value = withSpring(GRID_OFFSET_X + x * CELL_SIZE, SPRING_CONFIG);
-    sharedY.value = withSpring(gridOffsetY + y * CELL_SIZE, SPRING_CONFIG);
+    sharedX.value = withSpring(GRID_OFFSET_X + x * CELL_WIDTH, SPRING_CONFIG);
+    sharedY.value = withSpring(gridOffsetY + y * CELL_HEIGHT, SPRING_CONFIG);
   }, [x, y, gridOffsetY]);
 
   const gesture = Gesture.Pan()
@@ -60,14 +60,14 @@ const Vehicle = memo(({
       // Strict axis lock — ignore cross-axis delta entirely
       if (direction === 'horizontal') {
         const minX = GRID_OFFSET_X; // leftmost grid edge
-        const maxX = GRID_OFFSET_X + (GRID_SIZE - length) * CELL_SIZE;
+        const maxX = GRID_OFFSET_X + (GRID_SIZE - length) * CELL_WIDTH;
         sharedX.value = Math.max(minX, Math.min(
           maxX,
           dragStart.value.x + e.translationX
         ));
       } else {
         const minY = gridOffsetY;
-        const maxY = gridOffsetY + (GRID_SIZE - length) * CELL_SIZE;
+        const maxY = gridOffsetY + (GRID_SIZE - length) * CELL_HEIGHT;
         sharedY.value = Math.max(minY, Math.min(
           maxY,
           dragStart.value.y + e.translationY
@@ -80,8 +80,8 @@ const Vehicle = memo(({
       
       // Calculate snapped grid steps
       const delta = direction === 'horizontal'
-        ? (sharedX.value - dragStart.value.x) / CELL_SIZE
-        : (sharedY.value - dragStart.value.y) / CELL_SIZE;
+        ? (sharedX.value - dragStart.value.x) / CELL_WIDTH
+        : (sharedY.value - dragStart.value.y) / CELL_HEIGHT;
 
       const steps = Math.round(delta);
 
@@ -90,8 +90,8 @@ const Vehicle = memo(({
         runOnJS(onMoveCommit)(id, steps);
       } else {
         // Snap back to current position with spring
-        sharedX.value = withSpring(GRID_OFFSET_X + x * CELL_SIZE, SPRING_CONFIG);
-        sharedY.value = withSpring(gridOffsetY + y * CELL_SIZE, SPRING_CONFIG);
+        sharedX.value = withSpring(GRID_OFFSET_X + x * CELL_WIDTH, SPRING_CONFIG);
+        sharedY.value = withSpring(gridOffsetY + y * CELL_HEIGHT, SPRING_CONFIG);
       }
     });
 
@@ -103,8 +103,8 @@ const Vehicle = memo(({
     ],
   }));
 
-  const w = direction === 'horizontal' ? CELL_SIZE * length : CELL_SIZE;
-  const h = direction === 'vertical' ? CELL_SIZE * length : CELL_SIZE;
+  const w = direction === 'horizontal' ? CELL_WIDTH * length : CELL_WIDTH;
+  const h = direction === 'vertical' ? CELL_HEIGHT * length : CELL_HEIGHT;
 
   return (
     <GestureDetector gesture={gesture}>

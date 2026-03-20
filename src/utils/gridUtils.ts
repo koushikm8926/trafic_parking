@@ -1,23 +1,24 @@
 import { Dimensions } from 'react-native';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export const GRID_SIZE = 6;
-export const CELL_SIZE = Math.floor((SCREEN_WIDTH * 0.92) / GRID_SIZE);
-export const GRID_OFFSET_X = Math.floor((SCREEN_WIDTH - CELL_SIZE * GRID_SIZE) / 2);
+export const CELL_WIDTH = Math.floor((SCREEN_WIDTH * 0.85) / GRID_SIZE);
+export const CELL_HEIGHT = Math.floor((SCREEN_HEIGHT * 0.6) / GRID_SIZE); // Taller cells
+export const GRID_OFFSET_X = Math.floor((SCREEN_WIDTH - CELL_WIDTH * GRID_SIZE) / 2);
 // GRID_OFFSET_Y is set per-layout in GameScreen based on safe area insets
 
 export function gridToPixel(col: number, row: number) {
   return {
-    x: GRID_OFFSET_X + col * CELL_SIZE,
-    y: row * CELL_SIZE, // add GRID_OFFSET_Y in component
+    x: GRID_OFFSET_X + col * CELL_WIDTH,
+    y: row * CELL_HEIGHT, // add GRID_OFFSET_Y in component
   };
 }
 
 export function pixelToGrid(px: number, py: number, offsetY: number) {
   return {
-    col: Math.round((px - GRID_OFFSET_X) / CELL_SIZE),
-    row: Math.round((py - offsetY) / CELL_SIZE),
+    col: Math.round((px - GRID_OFFSET_X) / CELL_WIDTH),
+    row: Math.round((py - offsetY) / CELL_HEIGHT),
   };
 }
 
