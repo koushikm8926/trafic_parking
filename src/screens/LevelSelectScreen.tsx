@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Animated, ImageBackground } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { allLevels } from '../levels';
@@ -39,16 +39,12 @@ export default function LevelSelectScreen({ navigation }: Props) {
   };
   
   return (
-    <LinearGradient
-      colors={['#0F2027', '#203A43', '#2C5364']}
-      locations={[0, 0.5, 1]}
+    <ImageBackground
+      source={require('../../levels.png')}
       style={styles.container}
+      resizeMode="cover"
     >
-      {/* Background decoration */}
-      <View style={styles.bgDecoration}>
-        <View style={[styles.bgCircle, { top: '5%', right: '10%', width: 120, height: 120 }]} />
-        <View style={[styles.bgCircle, { bottom: '15%', left: '5%', width: 160, height: 160 }]} />
-      </View>
+
       
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {/* Enhanced Header */}
@@ -205,7 +201,7 @@ export default function LevelSelectScreen({ navigation }: Props) {
           </ScrollView>
         </Animated.View>
       </SafeAreaView>
-    </LinearGradient>
+    </ImageBackground>
   );
 }
 
