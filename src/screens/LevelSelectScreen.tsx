@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, ImageBackground, View, Image } from 'react-native';
+import { StyleSheet, ImageBackground, View, Image, TouchableOpacity, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface Props {
@@ -23,6 +23,19 @@ export default function LevelSelectScreen({ navigation }: Props) {
         </View>
         <View style={{ flex: 1 }} />
       </SafeAreaView>
+      
+      <TouchableOpacity 
+        style={styles.backButtonContainer}
+        onPress={() => navigation.goBack()}
+        activeOpacity={0.7}
+      >
+        <Image 
+          source={require('../../araw.png')}
+          style={styles.arrowImage}
+          resizeMode="contain"
+        />
+        <Text style={styles.backText}>BACK</Text>
+      </TouchableOpacity>
     </ImageBackground>
   );
 }
@@ -48,6 +61,26 @@ const styles = StyleSheet.create({
   headerImage: {
     width: '75%',
     height: 75,
+  },
+  backButtonContainer: {
+    position: 'absolute',
+    bottom: 30,
+    right: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  arrowImage: {
+    width: 60,
+    height: 60,
+  },
+  backText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '900',
+    marginTop: -5,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 10,
   },
 });
 
