@@ -57,7 +57,7 @@ function ConfettiParticle({ index }: ConfettiParticleProps) {
         { rotate: `${rotate.value}deg` },
       ],
       opacity: opacity.value,
-    };
+    } as any;
   });
 
   const color = COLORS[index % COLORS.length];

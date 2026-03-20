@@ -1,4 +1,3 @@
-import { GRID_SIZE } from './gridUtils';
 import { VehicleData } from '../types';
 
 /**
@@ -33,9 +32,12 @@ export function canMove(
         : vehicle.y - step;
     }
 
+    const gridWidth = backgroundGrid[0]?.length || 6;
+    const gridHeight = backgroundGrid.length || 6;
+
     // Out of bounds — hard stop
-    if (checkCol < 0 || checkCol >= GRID_SIZE ||
-        checkRow < 0 || checkRow >= GRID_SIZE) break;
+    if (checkCol < 0 || checkCol >= gridWidth ||
+        checkRow < 0 || checkRow >= gridHeight) break;
 
     // Wall — hard stop
     if (backgroundGrid[checkRow][checkCol] === 2) break;
@@ -64,10 +66,12 @@ export function isAtExit(
   const exitCol = vehicle.x + vehicle.length - 1;
   const exitRow = vehicle.y;
 
+  const gridWidth = backgroundGrid[0]?.length || 6;
+  
   // Check if the cell to the right is exit (3) or off-grid
   if (vehicle.direction === 'horizontal') {
     const frontCol = vehicle.x + vehicle.length;
-    if (frontCol >= GRID_SIZE) return true; // drove off grid
+    if (frontCol >= gridWidth) return true; // drove off grid
     return backgroundGrid[exitRow][frontCol] === 3;
   }
 

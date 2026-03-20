@@ -11,6 +11,16 @@ export interface VehicleData {
   isTarget: boolean; // true for the red exit car
 }
 
+export interface HazardData {
+  id: string;
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  speed: number;     // cells per second
+  loopType: 'loop' | 'reverse';
+}
+
 export interface LevelData {
   id: number;
   gridWidth: number; // always 6
@@ -21,6 +31,7 @@ export interface LevelData {
   stars: [number, number, number]; // move thresholds for star ratings [3star, 2star, 1star]
   exitSide: 'right' | 'left' | 'top' | 'bottom'; // which edge exit is on
   difficulty?: 'easy' | 'medium' | 'hard' | 'expert'; // optional difficulty rating
+  hazards?: HazardData[];
 }
 
 export interface MoveRecord {

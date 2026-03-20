@@ -4,25 +4,35 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withTiming,
+  Easing,
   runOnJS,
   withSequence,
-  withTiming,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { GridMetrics } from '../utils/gridUtils';
 import { VehicleData } from '../types';
 
+export interface PhysicsEntity {
+  getX: () => number;
+  getY: () => number;
+  w: number;
+  h: number;
+}
+
 interface Props extends VehicleData {
   metrics: GridMetrics;
-  onMoveCommit: (id: string, deltaSteps: number) => void;
+  onSwipe?: (id: string, dir: number) => void;
   isHinted?: boolean;
+  onRegister?: (id: string, entity: PhysicsEntity) => void;
+  onUnregister?: (id: string) => void;
 }
 
 const SPRING_CONFIG = { damping: 15, stiffness: 200, mass: 0.8 };
 
 const Vehicle = memo(({
   id, x, y, direction, length, color, isTarget,
-  metrics, onMoveCommit, isHinted,
+  metrics, onSwipe, isHinted, onRegister, onUnregister
 }: Props) => {
   const pixelX = metrics.offsetX + x * metrics.cellWidth;
   const pixelY = metrics.offsetY + y * metrics.cellHeight;
@@ -49,9 +59,41 @@ const Vehicle = memo(({
 
   // Sync position when committed move changes x/y props
   useEffect(() => {
-    sharedX.value = withSpring(metrics.offsetX + x * metrics.cellWidth, SPRING_CONFIG);
-    sharedY.value = withSpring(metrics.offsetY + y * metrics.cellHeight, SPRING_CONFIG);
+    const newPixelX = metrics.offsetX + x * metrics.cellWidth;
+    const newPixelY = metrics.offsetY + y * metrics.cellHeight;
+    
+    // Tween animation based on distance for smooth slide
+    const distCells = Math.max(
+      Math.abs(sharedX.value - newPixelX) / metrics.cellWidth,
+      Math.abs(sharedY.value - newPixelY) / metrics.cellHeight
+    );
+    
+    if (distCells > 0) {
+      const duration = Math.max(250, distCells * 40); 
+      sharedX.value = withTiming(newPixelX, { duration, easing: Easing.out(Easing.quad) });
+      sharedY.value = withTiming(newPixelY, { duration, easing: Easing.out(Easing.quad) });
+    } else {
+      sharedX.value = newPixelX;
+      sharedY.value = newPixelY;
+    }
   }, [x, y, metrics.offsetX, metrics.offsetY, metrics.cellWidth, metrics.cellHeight]);
+
+  const w = direction === 'horizontal' ? metrics.cellWidth * length : metrics.cellWidth;
+  const h = direction === 'vertical' ? metrics.cellHeight * length : metrics.cellHeight;
+
+  useEffect(() => {
+    if (onRegister) {
+      onRegister(id, {
+        getX: () => sharedX.value,
+        getY: () => sharedY.value,
+        w: w - 6,
+        h: h - 6,
+      });
+    }
+    return () => {
+      if (onUnregister) onUnregister(id);
+    };
+  }, [id, w, h, onRegister, onUnregister]);
 
   const gesture = Gesture.Pan()
     .onBegin(() => {
@@ -81,18 +123,21 @@ const Vehicle = memo(({
       // Scale back to normal
       scale.value = withSpring(1, SPRING_CONFIG);
       
-      // Calculate snapped grid steps
-      const delta = direction === 'horizontal'
-        ? (sharedX.value - dragStart.value.x) / metrics.cellWidth
-        : (sharedY.value - dragStart.value.y) / metrics.cellHeight;
+      const swipeThreshold = 5;
+      let dir = 0;
 
-      const steps = Math.round(delta);
-
-      if (steps !== 0) {
-        // Delegate collision check + commit to JS
-        runOnJS(onMoveCommit)(id, steps);
+      if (direction === 'horizontal') {
+        if (e.translationX > swipeThreshold) dir = 1;
+        else if (e.translationX < -swipeThreshold) dir = -1;
       } else {
-        // Snap back to current position with spring
+        if (e.translationY > swipeThreshold) dir = 1;
+        else if (e.translationY < -swipeThreshold) dir = -1;
+      }
+
+      if (dir !== 0 && onSwipe) {
+        runOnJS(onSwipe)(id, dir);
+      } else {
+        // Snap back to current position
         sharedX.value = withSpring(metrics.offsetX + x * metrics.cellWidth, SPRING_CONFIG);
         sharedY.value = withSpring(metrics.offsetY + y * metrics.cellHeight, SPRING_CONFIG);
       }
@@ -105,9 +150,6 @@ const Vehicle = memo(({
       { scale: scale.value * hintPulse.value },
     ] as any,
   }));
-
-  const w = direction === 'horizontal' ? metrics.cellWidth * length : metrics.cellWidth;
-  const h = direction === 'vertical' ? metrics.cellHeight * length : metrics.cellHeight;
 
   return (
     <GestureDetector gesture={gesture}>

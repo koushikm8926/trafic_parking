@@ -37,7 +37,7 @@ function getTargetMoveHint(
   level: LevelData
 ): Hint | null {
   const others = vehicles.filter(v => v.id !== target.id);
-  const occupancy = buildOccupancyMap(others);
+  const occupancy = buildOccupancyMap(others, level.gridWidth, level.gridHeight);
   
   // Try moving target forward (towards exit)
   const stepsToExit = level.gridWidth - (target.x + target.length);
@@ -93,7 +93,7 @@ function getSuggestedMoveForVehicle(
   level: LevelData
 ): Hint | null {
   const others = vehicles.filter(v => v.id !== vehicle.id);
-  const occupancy = buildOccupancyMap(others);
+  const occupancy = buildOccupancyMap(others, level.gridWidth, level.gridHeight);
   
   // Try moving forward
   const forwardSteps = canMove(vehicle, 1, occupancy, level.backgroundGrid);

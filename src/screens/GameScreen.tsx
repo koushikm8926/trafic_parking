@@ -1,14 +1,15 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { StyleSheet, View, Dimensions } from 'react-native';
+import { StyleSheet, View, Dimensions, Text, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import GameGrid from '../components/GameGrid';
-import Vehicle from '../components/Vehicle';
+import Vehicle, { PhysicsEntity } from '../components/Vehicle';
+import Hazard from '../components/Hazard';
 import LevelCompleteModal from '../components/LevelCompleteModal';
 import HelpModal from '../components/HelpModal';
 import AchievementToast from '../components/AchievementToast';
-import { buildOccupancyMap, calculateGridMetrics, GridMetrics } from '../utils/gridUtils';
-import { canMove } from '../utils/collision';
-import { hasReachedExit, calculateStars, isNewBest } from '../utils/gameLogic';
+import { Grid, Vehicle as GridVehicle, Orientation, CellType } from '../engine/Grid';
+import { calculateGridMetrics, GridMetrics } from '../utils/gridUtils';
+import { calculateStars, isNewBest } from '../utils/gameLogic';
 import { playSound, initSounds } from '../utils/soundManager';
 import { MoveHistory } from '../utils/moveHistory';
 import { getHint, Hint } from '../utils/hintSystem';
@@ -46,6 +47,7 @@ export default function GameScreen({ navigation, route }: Props) {
     calculateGridMetrics(level.gridWidth, level.gridHeight)
   );
   const [isCompleted, setIsCompleted] = useState(false);
+  const [isFailed, setIsFailed] = useState(false);
   const [starsEarned, setStarsEarned] = useState(0);
   const [isSoundEnabled, setIsSoundEnabled] = useState(getSoundEnabled());
   const [isHapticsEnabled, setIsHapticsEnabled] = useState(getHapticsEnabled());
@@ -61,12 +63,83 @@ export default function GameScreen({ navigation, route }: Props) {
   const startTime = useRef<number>(Date.now());
   const timerInterval = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize sounds and timer on mount
+  const gridRef = useRef<Grid | null>(null);
+
+  const vehicleRefs = useRef<Record<string, PhysicsEntity>>({});
+  const hazardRefs = useRef<Record<string, PhysicsEntity>>({});
+
+  const registerVehicle = useCallback((id: string, entity: PhysicsEntity) => { vehicleRefs.current[id] = entity; }, []);
+  const unregisterVehicle = useCallback((id: string) => { delete vehicleRefs.current[id]; }, []);
+  const registerHazard = useCallback((id: string, entity: PhysicsEntity) => { hazardRefs.current[id] = entity; }, []);
+  const unregisterHazard = useCallback((id: string) => { delete hazardRefs.current[id]; }, []);
+
+  const handleGameOver = useCallback(() => {
+    setIsFailed(true);
+    GameHaptics.collision(isHapticsEnabled);
+    playSound('invalid', isSoundEnabled);
+  }, [isHapticsEnabled, isSoundEnabled]);
+
+  // JS-driven frame collision loop polling precision Reanimated values
+  useEffect(() => {
+    let frameId: number;
+    let isActive = true;
+
+    const collisionLoop = () => {
+      if (!isActive || isCompleted || isFailed) return;
+
+      const vehiclesList = Object.values(vehicleRefs.current);
+      const hazardsList = Object.values(hazardRefs.current);
+
+      for (const v of vehiclesList) {
+        for (const h of hazardsList) {
+          const vx = v.getX();
+          const vy = v.getY();
+          const hx = h.getX();
+          const hy = h.getY();
+
+          // AABB Intersection check (with a tiny 2px forgiving buffer to prevent unfair corner clips)
+          const buffer = 2;
+          if (
+            vx + buffer < hx + h.w - buffer &&
+            vx + v.w - buffer > hx + buffer &&
+            vy + buffer < hy + h.h - buffer &&
+            vy + v.h - buffer > hy + buffer
+          ) {
+            handleGameOver();
+            isActive = false;
+            return;
+          }
+        }
+      }
+
+      frameId = requestAnimationFrame(collisionLoop);
+    };
+
+    frameId = requestAnimationFrame(collisionLoop);
+
+    return () => {
+      isActive = false;
+      cancelAnimationFrame(frameId);
+    };
+  }, [isCompleted, isFailed, handleGameOver]);
+
+  // Initialize sounds, timer, and logical grid on mount
   useEffect(() => {
     initSounds();
     setCurrentLevelId(levelId);
     startTime.current = Date.now();
     
+    const newGrid = new Grid(level.gridWidth, level.gridHeight);
+    for (let r = 0; r < level.gridHeight; r++) {
+      for (let c = 0; c < level.gridWidth; c++) {
+        newGrid.setCell(r, c, level.backgroundGrid[r][c] as CellType);
+      }
+    }
+    level.vehicles.forEach(v => {
+      newGrid.addVehicle(new GridVehicle(v.id, v.x, v.y, v.direction as Orientation, v.length));
+    });
+    gridRef.current = newGrid;
+
     // Start timer
     timerInterval.current = setInterval(() => {
       if (!isCompleted) {
@@ -88,17 +161,30 @@ export default function GameScreen({ navigation, route }: Props) {
     }
   }, [isCompleted]);
 
-  // Update metrics when level changes
   useEffect(() => {
     setMetrics(calculateGridMetrics(level.gridWidth, level.gridHeight));
+    
+    // Refresh the logical grid instance on level update
+    const newGrid = new Grid(level.gridWidth, level.gridHeight);
+    for (let r = 0; r < level.gridHeight; r++) {
+      for (let c = 0; c < level.gridWidth; c++) {
+        newGrid.setCell(r, c, level.backgroundGrid[r][c] as CellType);
+      }
+    }
+    level.vehicles.forEach(v => {
+      newGrid.addVehicle(new GridVehicle(v.id, v.x, v.y, v.direction as Orientation, v.length));
+    });
+    gridRef.current = newGrid;
+    setVehicles(level.vehicles);
+    
   }, [level]);
 
-  // Check win condition after every move
+  // Check win condition after every move (All vehicles removed)
   useEffect(() => {
-    if (!isCompleted && hasReachedExit(vehicles, level)) {
+    if (!isCompleted && !isFailed && vehicles.length === 0) {
       handleLevelComplete();
     }
-  }, [vehicles, isCompleted]);
+  }, [vehicles, isCompleted, isFailed]);
 
   const handleLevelComplete = useCallback(() => {
     const moveCount = moveHistory.getMoveCount();
@@ -166,48 +252,53 @@ export default function GameScreen({ navigation, route }: Props) {
     }, 500);
   }, [moveHistory, level, isSoundEnabled]);
 
-  const handleMoveCommit = useCallback((vehicleId: string, steps: number) => {
-    if (isCompleted) return;
+  const handleSwipe = useCallback((vehicleId: string, dir: number) => {
+    if (isCompleted || isFailed || !gridRef.current) return;
     
-    setVehicles(currentVehicles => {
-      const vehicle = currentVehicles.find(v => v.id === vehicleId);
-      if (!vehicle) return currentVehicles;
+    const grid = gridRef.current;
+    const originV = grid.vehicles.find(v => v.id === vehicleId);
+    if (!originV) return;
 
-      const others = currentVehicles.filter(v => v.id !== vehicleId);
-      const occupancy = buildOccupancyMap(others, level.gridWidth, level.gridHeight);
-      const allowedSteps = canMove(vehicle, steps, occupancy, level.backgroundGrid);
+    const preX = originV.x;
+    const preY = originV.y;
 
-      if (allowedSteps !== 0) {
-        // Haptic feedback for successful move
+    // Slide logic
+    const result = grid.slideVehicle(vehicleId, dir);
+    if (!result) return;
+
+    if (result.x === preX && result.y === preY) {
+      GameHaptics.collision(isHapticsEnabled);
+      playSound('invalid', isSoundEnabled);
+      return;
+    }
+
+    // A valid move occurred
     GameHaptics.vehicleMove(isHapticsEnabled);
-        
-        // Update statistics
-        incrementStatistic('totalMoves', 1);
-        
-        playSound('move', isSoundEnabled);
-        
-        const newX = vehicle.direction === 'horizontal' ? vehicle.x + allowedSteps : vehicle.x;
-        const newY = vehicle.direction === 'vertical' ? vehicle.y + allowedSteps : vehicle.y;
-        
-        moveHistory.addMove(vehicleId, vehicle.x, vehicle.y, newX, newY);
-        
-        // Clear hint
-        setHintedVehicleId(null);
-        
-        return currentVehicles.map(v => {
-          if (v.id !== vehicleId) return v;
-          return { ...v, x: newX, y: newY };
-        });
-      } else {
-        // Haptic feedback for collision
-    GameHaptics.collision(isHapticsEnabled);
-        
-        playSound('invalid', isSoundEnabled);
-      }
+    incrementStatistic('totalMoves', 1);
+    playSound('move', isSoundEnabled);
 
-      return currentVehicles;
-    });
-  }, [level, isCompleted, isSoundEnabled, moveHistory]);
+    // Sync to visually update rendering
+    setVehicles(prev => prev.map(v => {
+      if (v.id === vehicleId) {
+        return { ...v, x: result.x, y: result.y };
+      }
+      return v;
+    }));
+
+    if (result.exited) {
+      playSound('win', isSoundEnabled); // Optional feedback for exiting
+      // Wait for dynamic animation duration based on distance before unmounting!
+      const duration = Math.max(300, Math.abs(result.steps) * 50);
+      
+      setTimeout(() => {
+        setVehicles(prev => prev.filter(v => v.id !== vehicleId));
+      }, duration);
+    } else {
+      // Clear hints on successful internal move
+      setHintedVehicleId(null);
+    }
+
+  }, [level, isCompleted, isSoundEnabled, isHapticsEnabled]);
 
   const handleUndo = useCallback(() => {
     const lastMove = moveHistory.undo();
@@ -262,6 +353,7 @@ export default function GameScreen({ navigation, route }: Props) {
     setVehicles(level.vehicles);
     moveHistory.clear();
     setIsCompleted(false);
+    setIsFailed(false);
     setStarsEarned(0);
     setShowModal(false);
     setIsNewBestScore(false);
@@ -287,6 +379,7 @@ export default function GameScreen({ navigation, route }: Props) {
       setVehicles(nextLevel.vehicles);
       moveHistory.clear();
       setIsCompleted(false);
+      setIsFailed(false);
       setStarsEarned(0);
       setIsNewBestScore(false);
       setHintedVehicleId(null);
@@ -322,16 +415,37 @@ const handleHelp = useCallback(() => {
             backgroundGrid={level.backgroundGrid} 
             metrics={metrics} 
           />
+          {level.hazards?.map(h => (
+            <Hazard
+              key={h.id}
+              data={h}
+              metrics={metrics}
+              onRegister={registerHazard}
+              onUnregister={unregisterHazard}
+            />
+          ))}
           {vehicles.map(v => (
             <Vehicle
               key={v.id}
               {...v}
               metrics={metrics}
-              onMoveCommit={handleMoveCommit}
+              onSwipe={handleSwipe}
               isHinted={v.id === hintedVehicleId}
+              onRegister={registerVehicle}
+              onUnregister={unregisterVehicle}
             />
           ))}
         </View>
+
+        {isFailed && (
+          <View style={styles.overlay}>
+            <Text style={styles.gameOverText}>GAME OVER</Text>
+            <Text style={styles.gameOverSub}>You hit a hazard!</Text>
+            <TouchableOpacity style={styles.button} onPress={handleReset}>
+              <Text style={styles.buttonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         
         <LevelCompleteModal
           visible={showModal}
@@ -371,4 +485,33 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative',
   },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  gameOverText: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#FF3B30',
+    marginBottom: 10,
+  },
+  gameOverSub: {
+    fontSize: 20,
+    color: 'white',
+    marginBottom: 40,
+  },
+  button: {
+    backgroundColor: '#34C759',
+    paddingHorizontal: 40,
+    paddingVertical: 15,
+    borderRadius: 30,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
+  }
 });

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { VehicleData, LevelData } from '../types';
-import { level_001 } from '../levels/level_001';
+import { allLevels } from '../levels';
 
 export interface GameState {
   // Level state
@@ -24,8 +24,8 @@ export interface GameState {
 
 export const useGameStore = create<GameState>((set, get) => ({
   // Initial state
-  currentLevel: level_001 as LevelData,
-  vehicles: (level_001 as LevelData).vehicles,
+  currentLevel: allLevels[0],
+  vehicles: allLevels[0].vehicles,
   moveCount: 0,
   isCompleted: false,
   starsEarned: 0,
