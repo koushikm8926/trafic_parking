@@ -38,6 +38,12 @@ const styles = StyleSheet.create({
     paddingTop: 40,
     alignItems: 'center',
     width: '100%',
+    // Shadow properties
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 8,
   },
   headerImage: {
     width: '75%',
