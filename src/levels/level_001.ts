@@ -1,16 +1,16 @@
 export const level_001 = {
   "id": 1,
-  "gridWidth": 13,
+  "gridWidth": 12,
   "gridHeight": 13,
   "exitSide": "right",
   "difficulty": "easy",
   "backgroundGrid": Array(13).fill(0).map((_, r) => 
-    Array(13).fill(0).map((_, c) => (r === 6 && c === 12 ? 3 : 0))
-  ), // 3 = exit at row 6, right edge (index 12)
+    Array(12).fill(0).map((_, c) => (r === 6 && c === 11 ? 3 : 0))
+  ), // 3 = exit at row 6, right edge (index 11 of 12 columns)
   "vehicles": [
     {
       "id": "target",
-      "x": 3, "y": 6,
+      "x": 2, "y": 6,
       "direction": "horizontal",
       "length": 3,
       "color": "#D85A30",
@@ -18,7 +18,7 @@ export const level_001 = {
     },
     {
       "id": "v1",
-      "x": 7, "y": 4,
+      "x": 6, "y": 4,
       "direction": "vertical",
       "length": 4,
       "color": "#534AB7",
@@ -26,7 +26,7 @@ export const level_001 = {
     },
     {
       "id": "v2",
-      "x": 9, "y": 6,
+      "x": 8, "y": 6,
       "direction": "vertical",
       "length": 3,
       "color": "#0F6E56",
