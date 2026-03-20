@@ -2,7 +2,7 @@ import { Dimensions } from 'react-native';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-export const GRID_SIZE = 6;
+export const GRID_SIZE = 12;
 export const CELL_WIDTH = Math.floor((SCREEN_WIDTH * 0.85) / GRID_SIZE);
 export const CELL_HEIGHT = Math.floor((SCREEN_HEIGHT * 0.6) / GRID_SIZE); // Taller cells
 export const GRID_OFFSET_X = Math.floor((SCREEN_WIDTH - CELL_WIDTH * GRID_SIZE) / 2);
