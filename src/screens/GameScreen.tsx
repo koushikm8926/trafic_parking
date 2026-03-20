@@ -6,7 +6,7 @@ import Vehicle from '../components/Vehicle';
 import LevelCompleteModal from '../components/LevelCompleteModal';
 import HelpModal from '../components/HelpModal';
 import AchievementToast from '../components/AchievementToast';
-import { buildOccupancyMap, CELL_WIDTH, CELL_HEIGHT, GRID_SIZE } from '../utils/gridUtils';
+import { buildOccupancyMap, calculateGridMetrics, GridMetrics } from '../utils/gridUtils';
 import { canMove } from '../utils/collision';
 import { hasReachedExit, calculateStars, isNewBest } from '../utils/gameLogic';
 import { playSound, initSounds } from '../utils/soundManager';
@@ -19,18 +19,18 @@ import {
   saveLevelProgress,
   getSoundEnabled,
   setSoundEnabled,
+  getHapticsEnabled,
+  setHapticsEnabled,
   setCurrentLevelId,
   updateStatistics,
+  incrementStatistic,
   getStatistics,
+  getTotalStars,
   saveAchievement,
   isAchievementUnlocked,
 } from '../utils/storage';
 import { getLevelById, getNextLevel, isLastLevel } from '../levels';
 import { LevelData, VehicleData } from '../types';
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const GRID_HEIGHT = CELL_HEIGHT * GRID_SIZE;
-const GRID_OFFSET_Y = Math.floor((SCREEN_HEIGHT - GRID_HEIGHT) / 2);
 
 interface Props {
   navigation: any;
@@ -39,11 +39,16 @@ interface Props {
 
 export default function GameScreen({ navigation, route }: Props) {
   const levelId = route.params?.levelId || 1;
-  const [level, setLevel] = useState<LevelData>(getLevelById(levelId)!);
+  const initialLevel = getLevelById(levelId)!;
+  const [level, setLevel] = useState<LevelData>(initialLevel);
   const [vehicles, setVehicles] = useState<VehicleData[]>(level.vehicles);
+  const [metrics, setMetrics] = useState<GridMetrics>(
+    calculateGridMetrics(level.gridWidth, level.gridHeight)
+  );
   const [isCompleted, setIsCompleted] = useState(false);
   const [starsEarned, setStarsEarned] = useState(0);
   const [isSoundEnabled, setIsSoundEnabled] = useState(getSoundEnabled());
+  const [isHapticsEnabled, setIsHapticsEnabled] = useState(getHapticsEnabled());
   const [showModal, setShowModal] = useState(false);
   const [isNewBestScore, setIsNewBestScore] = useState(false);
   const [hintedVehicleId, setHintedVehicleId] = useState<string | null>(null);
@@ -83,6 +88,11 @@ export default function GameScreen({ navigation, route }: Props) {
     }
   }, [isCompleted]);
 
+  // Update metrics when level changes
+  useEffect(() => {
+    setMetrics(calculateGridMetrics(level.gridWidth, level.gridHeight));
+  }, [level]);
+
   // Check win condition after every move
   useEffect(() => {
     if (!isCompleted && hasReachedExit(vehicles, level)) {
@@ -107,23 +117,22 @@ export default function GameScreen({ navigation, route }: Props) {
     // Update statistics
     const wasFirstCompletion = !previousProgress?.completed;
     if (wasFirstCompletion) {
-      updateStatistics('levelsCompleted', 1);
+      incrementStatistic('totalLevelsCompleted', 1);
     }
-    updateStatistics('totalStars', stars);
     
     // Check achievements
     const stats = getStatistics();
     const newAchievements = checkAchievements({
-      levelsCompleted: stats.levelsCompleted,
-      totalStars: stats.totalStars,
-      threeStarLevels: 0, // Would need to calculate from all level progress
+      levelsCompleted: stats.totalLevelsCompleted,
+      totalStars: getTotalStars(),
+      threeStarLevels: 0, 
       totalMoves: stats.totalMoves,
-      undosUsed: stats.undosUsed,
-      hintsUsed: stats.hintsUsed,
-      resetsUsed: stats.resetsUsed,
+      undosUsed: stats.totalUndos,
+      hintsUsed: stats.totalHintsUsed,
+      resetsUsed: stats.totalResets,
       justCompletedLevel: wasFirstCompletion,
       justGot3Stars: stars === 3,
-      completedInOptimal: moveCount === level.stars.three,
+      completedInOptimal: moveCount === level.stars[0],
       completedWithoutHints: hintsUsedThisLevel.current === 0,
     });
     
@@ -144,7 +153,7 @@ export default function GameScreen({ navigation, route }: Props) {
     });
     
     // Haptic feedback
-    GameHaptics.levelComplete();
+    GameHaptics.levelComplete(isHapticsEnabled);
     
     playSound('win', isSoundEnabled);
     
@@ -165,15 +174,15 @@ export default function GameScreen({ navigation, route }: Props) {
       if (!vehicle) return currentVehicles;
 
       const others = currentVehicles.filter(v => v.id !== vehicleId);
-      const occupancy = buildOccupancyMap(others);
+      const occupancy = buildOccupancyMap(others, level.gridWidth, level.gridHeight);
       const allowedSteps = canMove(vehicle, steps, occupancy, level.backgroundGrid);
 
       if (allowedSteps !== 0) {
         // Haptic feedback for successful move
-        GameHaptics.vehicleMove();
+    GameHaptics.vehicleMove(isHapticsEnabled);
         
         // Update statistics
-        updateStatistics('totalMoves', 1);
+        incrementStatistic('totalMoves', 1);
         
         playSound('move', isSoundEnabled);
         
@@ -191,7 +200,7 @@ export default function GameScreen({ navigation, route }: Props) {
         });
       } else {
         // Haptic feedback for collision
-        GameHaptics.collision();
+    GameHaptics.collision(isHapticsEnabled);
         
         playSound('invalid', isSoundEnabled);
       }
@@ -203,8 +212,8 @@ export default function GameScreen({ navigation, route }: Props) {
   const handleUndo = useCallback(() => {
     const lastMove = moveHistory.undo();
     if (lastMove) {
-      GameHaptics.buttonPress();
-      updateStatistics('undosUsed', 1);
+      GameHaptics.buttonPress(isHapticsEnabled);
+      incrementStatistic('totalUndos', 1);
       
       setVehicles(currentVehicles =>
         currentVehicles.map(v =>
@@ -220,7 +229,7 @@ export default function GameScreen({ navigation, route }: Props) {
   const handleRedo = useCallback(() => {
     const redoMove = moveHistory.redo();
     if (redoMove) {
-      GameHaptics.buttonPress();
+      GameHaptics.buttonPress(isHapticsEnabled);
       
       setVehicles(currentVehicles =>
         currentVehicles.map(v =>
@@ -236,8 +245,8 @@ export default function GameScreen({ navigation, route }: Props) {
   const handleHint = useCallback(() => {
     const hint: Hint | null = getHint(vehicles, level);
     if (hint) {
-      GameHaptics.buttonPress();
-      updateStatistics('hintsUsed', 1);
+      GameHaptics.buttonPress(isHapticsEnabled);
+      incrementStatistic('totalHintsUsed', 1);
       hintsUsedThisLevel.current += 1;
       
       setHintedVehicleId(hint.vehicleId);
@@ -247,8 +256,8 @@ export default function GameScreen({ navigation, route }: Props) {
   }, [vehicles, level]);
 
   const handleReset = useCallback(() => {
-    GameHaptics.buttonPress();
-    updateStatistics('resetsUsed', 1);
+    GameHaptics.buttonPress(isHapticsEnabled);
+    incrementStatistic('totalResets', 1);
     
     setVehicles(level.vehicles);
     moveHistory.clear();
@@ -311,13 +320,13 @@ const handleHelp = useCallback(() => {
         <View style={styles.board}>
           <GameGrid 
             backgroundGrid={level.backgroundGrid} 
-            gridOffsetY={GRID_OFFSET_Y} 
+            metrics={metrics} 
           />
           {vehicles.map(v => (
             <Vehicle
               key={v.id}
               {...v}
-              gridOffsetY={GRID_OFFSET_Y}
+              metrics={metrics}
               onMoveCommit={handleMoveCommit}
               isHinted={v.id === hintedVehicleId}
             />

@@ -1,39 +1,51 @@
 import { Dimensions } from 'react-native';
+import { VehicleData } from '../types';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-export const GRID_SIZE = 12;
-export const CELL_WIDTH = Math.floor((SCREEN_WIDTH * 0.85) / GRID_SIZE);
-export const CELL_HEIGHT = Math.floor((SCREEN_HEIGHT * 0.6) / GRID_SIZE); // Taller cells
-export const GRID_OFFSET_X = Math.floor((SCREEN_WIDTH - CELL_WIDTH * GRID_SIZE) / 2);
-// GRID_OFFSET_Y is set per-layout in GameScreen based on safe area insets
+export function calculateGridMetrics(gridWidth: number, gridHeight: number) {
+  const cellWidth = Math.floor((SCREEN_WIDTH * 0.85) / gridWidth);
+  const cellHeight = Math.floor((SCREEN_HEIGHT * 0.6) / gridHeight);
+  const offsetX = Math.floor((SCREEN_WIDTH - cellWidth * gridWidth) / 2);
+  const gridHeightTotal = cellHeight * gridHeight;
+  const offsetY = Math.floor((SCREEN_HEIGHT - gridHeightTotal) / 2);
 
-export function gridToPixel(col: number, row: number) {
   return {
-    x: GRID_OFFSET_X + col * CELL_WIDTH,
-    y: row * CELL_HEIGHT, // add GRID_OFFSET_Y in component
+    cellWidth,
+    cellHeight,
+    offsetX,
+    offsetY,
+    gridWidth,
+    gridHeight,
   };
 }
 
-export function pixelToGrid(px: number, py: number, offsetY: number) {
+export type GridMetrics = ReturnType<typeof calculateGridMetrics>;
+
+export function gridToPixel(col: number, row: number, metrics: GridMetrics) {
   return {
-    col: Math.round((px - GRID_OFFSET_X) / CELL_WIDTH),
-    row: Math.round((py - offsetY) / CELL_HEIGHT),
+    x: metrics.offsetX + col * metrics.cellWidth,
+    y: metrics.offsetY + row * metrics.cellHeight,
   };
 }
 
-import { VehicleData } from '../types';
+export function pixelToGrid(px: number, py: number, metrics: GridMetrics) {
+  return {
+    col: Math.round((px - metrics.offsetX) / metrics.cellWidth),
+    row: Math.round((py - metrics.offsetY) / metrics.cellHeight),
+  };
+}
 
-export function buildOccupancyMap(vehicles: VehicleData[]): boolean[][] {
-  const map: boolean[][] = Array.from({ length: GRID_SIZE }, () =>
-    Array(GRID_SIZE).fill(false)
+export function buildOccupancyMap(vehicles: VehicleData[], gridWidth: number, gridHeight: number): boolean[][] {
+  const map: boolean[][] = Array.from({ length: gridHeight }, () =>
+    Array(gridWidth).fill(false)
   );
 
   for (const v of vehicles) {
     for (let i = 0; i < v.length; i++) {
       const col = v.direction === 'horizontal' ? v.x + i : v.x;
       const row = v.direction === 'vertical' ? v.y + i : v.y;
-      if (col >= 0 && col < GRID_SIZE && row >= 0 && row < GRID_SIZE) {
+      if (col >= 0 && col < gridWidth && row >= 0 && row < gridHeight) {
         map[row][col] = true;
       }
     }

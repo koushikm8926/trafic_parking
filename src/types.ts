@@ -18,11 +18,7 @@ export interface LevelData {
   backgroundGrid: number[][]; // 6x6 array, values 0/2/3
   vehicles: VehicleData[];
   minMoves: number; // optimal solution move count
-  stars: {
-    three: number;
-    two: number;
-    one: number;
-  }; // move thresholds for star ratings
+  stars: [number, number, number]; // move thresholds for star ratings [3star, 2star, 1star]
   exitSide: 'right' | 'left' | 'top' | 'bottom'; // which edge exit is on
   difficulty?: 'easy' | 'medium' | 'hard' | 'expert'; // optional difficulty rating
 }
