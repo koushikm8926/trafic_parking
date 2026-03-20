@@ -98,13 +98,23 @@ const styles = StyleSheet.create({
   settingsButton: {
     position: 'absolute',
     top: 60,
-    right: 30,
+    right: 5,
     zIndex: 10,
-    padding: 10, // Increased tap area
+    padding: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    // Shadow properties
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 8,
   },
   settingsIcon: {
-    width: 40,
-    height: 40,
+    width: 80,
+    height: 80,
   },
   topContainer: {
     paddingTop: 100,
