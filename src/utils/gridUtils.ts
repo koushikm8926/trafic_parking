@@ -12,6 +12,7 @@ export const cellKey = (x: number, y: number): string => {
  * Returns an array of cell coordinates occupied by a vehicle.
  */
 export const getVehicleCells = (vehicle: VehicleData): { x: number; y: number }[] => {
+  'worklet';
   const cells: { x: number; y: number }[] = [];
   for (let i = 0; i < vehicle.length; i++) {
     cells.push({
