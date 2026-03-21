@@ -35,11 +35,9 @@ export const GameGrid: React.FC<Props> = ({
                 left: x * cellSize,
               },
               cellValue === 2 && styles.wallCell,
-              cellValue === 3 && styles.exitCell,
             ]}
           >
             {cellValue === 2 && <Text style={styles.cellIcon}>🚧</Text>}
-            {cellValue === 3 && <Text style={styles.cellIcon}>🏁</Text>}
           </View>
         );
       }
@@ -86,11 +84,6 @@ const styles = StyleSheet.create({
   },
   wallCell: {
     backgroundColor: '#3E3E5C',
-  },
-  exitCell: {
-    backgroundColor: 'rgba(76, 175, 80, 0.2)',
-    borderWidth: 1.5,
-    borderColor: '#4CAF50',
   },
   cellIcon: {
     fontSize: 16,
