@@ -3,7 +3,10 @@ import { VehicleData } from '../types';
 /**
  * Creates a unique key for a grid cell coordinate.
  */
-export const cellKey = (x: number, y: number): string => `${x},${y}`;
+export const cellKey = (x: number, y: number): string => {
+  'worklet';
+  return `${x},${y}`;
+};
 
 /**
  * Returns an array of cell coordinates occupied by a vehicle.

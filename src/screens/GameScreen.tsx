@@ -1,9 +1,12 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useCallback } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSharedValue } from 'react-native-reanimated';
 import { getLevelById } from '../levels';
 import { GameGrid } from '../components/GameGrid';
 import { Vehicle } from '../components/Vehicle';
+import { buildOccupancyMap } from '../utils/gridUtils';
+import { useGameStore } from '../store/useGameStore';
 
 interface Props {
   navigation: any;
@@ -14,16 +17,55 @@ const { width: screenWidth } = Dimensions.get('window');
 
 export default function GameScreen({ navigation, route }: Props) {
   const levelId = route.params?.levelId || 1;
-  const level = useMemo(() => getLevelById(levelId), [levelId]);
+  const initialLevel = useMemo(() => getLevelById(levelId), [levelId]);
+  
+  // Zustand Store
+  const { 
+    vehicles, 
+    moveCount, 
+    isWin, 
+    initLevel, 
+    moveVehicle, 
+    undo, 
+    resetLevel 
+  } = useGameStore();
+
+  // SharedValues for the UI thread (worklets)
+  const vehiclesSV = useSharedValue(vehicles);
+  const occupancyMapSV = useSharedValue(new Map<string, string>());
+  const backgroundGridSV = useSharedValue(initialLevel?.backgroundGrid || []);
+
+  // Initialize level
+  useEffect(() => {
+    initLevel(levelId);
+  }, [levelId, initLevel]);
+
+  // Sync SharedValues with Store State
+  useEffect(() => {
+    vehiclesSV.value = vehicles;
+    if (initialLevel) {
+      occupancyMapSV.value = buildOccupancyMap(vehicles, initialLevel.gridWidth, initialLevel.gridHeight);
+      backgroundGridSV.value = initialLevel.backgroundGrid;
+    }
+  }, [vehicles, initialLevel, vehiclesSV, occupancyMapSV, backgroundGridSV]);
+
+  // Win Detection
+  useEffect(() => {
+    if (isWin) {
+      navigation.replace('Win', { levelId, moves: moveCount, stars: 3 });
+    }
+  }, [isWin, levelId, moveCount, navigation]);
 
   const cellSize = useMemo(() => {
-    if (!level) return 0;
-    // Standard horizontal margin is 20px on each side (total 40px)
-    // We want the grid to fit comfortably.
-    return (screenWidth - 40) / level.gridWidth;
-  }, [level]);
+    if (!initialLevel) return 0;
+    return (screenWidth - 40) / initialLevel.gridWidth;
+  }, [initialLevel]);
 
-  if (!level) {
+  const handleCommitMove = useCallback((id: string, dx: number, dy: number) => {
+    moveVehicle(id, dx, dy);
+  }, [moveVehicle]);
+
+  if (!initialLevel) {
     return (
       <SafeAreaView style={styles.container}>
         <Text style={styles.errorText}>Level not found</Text>
@@ -38,32 +80,45 @@ export default function GameScreen({ navigation, route }: Props) {
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Level {levelId}</Text>
+        <View style={styles.moveBadge}>
+           <Text style={styles.moveText}>{moveCount}</Text>
+        </View>
       </View>
 
       <View style={styles.gameArea}>
         <View style={styles.gridWrapper}>
           <GameGrid
-            gridWidth={level.gridWidth}
-            gridHeight={level.gridHeight}
-            backgroundGrid={level.backgroundGrid}
+            gridWidth={initialLevel.gridWidth}
+            gridHeight={initialLevel.gridHeight}
+            backgroundGrid={initialLevel.backgroundGrid}
             cellSize={cellSize}
           />
-          {level.vehicles.map((vehicle) => (
-            <Vehicle key={vehicle.id} vehicle={vehicle} cellSize={cellSize} />
+          {vehicles.map((vehicle) => (
+            <Vehicle 
+              key={vehicle.id} 
+              vehicle={vehicle} 
+              cellSize={cellSize} 
+              onCommitMove={handleCommitMove}
+              onEscape={() => {}}
+              vehiclesSV={vehiclesSV}
+              occupancyMapSV={occupancyMapSV}
+              backgroundGridSV={backgroundGridSV}
+              gridWidth={initialLevel.gridWidth}
+              gridHeight={initialLevel.gridHeight}
+            />
           ))}
         </View>
       </View>
 
-      <TouchableOpacity 
-        style={styles.winButton}
-        onPress={() => navigation.navigate('Win', {
-          levelId,
-          moves: 12,
-          stars: 3
-        })}
-      >
-        <Text style={styles.winButtonText}>Simulate Win</Text>
-      </TouchableOpacity>
+      <View style={styles.footer}>
+        <TouchableOpacity style={styles.footerButton} onPress={undo}>
+          <Text style={styles.footerButtonText}>Undo</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.footerButton} onPress={resetLevel}>
+          <Text style={styles.footerButtonText}>Reset</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -94,7 +149,18 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 24,
     fontWeight: 'bold',
-    marginRight: 40, // offset back button
+  },
+  moveBadge: {
+    backgroundColor: '#4CAF50',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    minWidth: 40,
+    alignItems: 'center',
+  },
+  moveText: {
+    color: '#FFF',
+    fontWeight: 'bold',
   },
   gameArea: {
     flex: 1,
@@ -104,18 +170,26 @@ const styles = StyleSheet.create({
   },
   gridWrapper: {
     position: 'relative',
-    // The grid itself handles size via props, but the wrapper helps center it.
   },
-  winButton: {
-    margin: 20,
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  footerButton: {
+    flex: 0.45,
     padding: 16,
-    backgroundColor: '#4CAF50',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
-  winButtonText: {
+  footerButtonText: {
     color: '#FFF',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   errorText: {
