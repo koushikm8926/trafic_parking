@@ -18,7 +18,7 @@ interface Props {
   onEscape: (vehicleId: string, direction: string) => void;
   // SharedValues for UI-thread access
   vehiclesSV: SharedValue<VehicleData[]>;
-  occupancyMapSV: SharedValue<Map<string, string>>;
+  occupancyMapSV: SharedValue<Record<string, string>>;
   backgroundGridSV: SharedValue<CellValue[][]>;
   gridWidth: number;
   gridHeight: number;

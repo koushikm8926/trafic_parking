@@ -1,12 +1,13 @@
 import React, { useMemo, useEffect, useCallback } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useSharedValue } from 'react-native-reanimated';
+import { useSharedValue, SharedValue } from 'react-native-reanimated';
 import { getLevelById } from '../levels';
 import { GameGrid } from '../components/GameGrid';
 import { Vehicle } from '../components/Vehicle';
 import { buildOccupancyMap } from '../utils/gridUtils';
 import { useGameStore } from '../store/useGameStore';
+import { VehicleData, CellValue } from '../types';
 
 interface Props {
   navigation: any;
@@ -31,9 +32,9 @@ export default function GameScreen({ navigation, route }: Props) {
   } = useGameStore();
 
   // SharedValues for the UI thread (worklets)
-  const vehiclesSV = useSharedValue(vehicles);
-  const occupancyMapSV = useSharedValue(new Map<string, string>());
-  const backgroundGridSV = useSharedValue(initialLevel?.backgroundGrid || []);
+  const vehiclesSV: SharedValue<VehicleData[]> = useSharedValue(vehicles);
+  const occupancyMapSV: SharedValue<Record<string, string>> = useSharedValue({});
+  const backgroundGridSV: SharedValue<CellValue[][]> = useSharedValue(initialLevel?.backgroundGrid || []);
 
   // Initialize level
   useEffect(() => {
