@@ -15,10 +15,14 @@
       { "id": "target", "x": 0, "y": 2, "direction": "horizontal", "length": 2, "color": "#FF3B30" },
       { "id": "v1", "x": 2, "y": 0, "direction": "vertical", "length": 3, "color": "#FFCC00" },
       { "id": "v2", "x": 3, "y": 1, "direction": "horizontal", "length": 2, "color": "#34C759" },
-      { "id": "v3", "x": 5, "y": 3, "direction": "vertical", "length": 2, "color": "#5856D6" }
+      { "id": "v3", "x": 5, "y": 3, "direction": "vertical", "length": 2, "color": "#5856D6" },
+      { "id": "v4", "x": 0, "y": 3, "direction": "horizontal", "length": 2, "color": "#007AFF" },
+      { "id": "v5", "x": 3, "y": 2, "direction": "horizontal", "length": 2, "color": "#FF9500" },
+      { "id": "v6", "x": 4, "y": 4, "direction": "vertical", "length": 2, "color": "#AF52DE" },
+      { "id": "v7", "x": 0, "y": 0, "direction": "horizontal", "length": 2, "color": "#8E8E93" }
     ],
-    "minMoves": 10,
-    "stars": [10, 15, 20],
+    "minMoves": 15,
+    "stars": [15, 20, 25],
     "exitSide": "right",
     "difficulty": "tutorial"
   }
