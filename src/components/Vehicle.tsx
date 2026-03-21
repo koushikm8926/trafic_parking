@@ -22,6 +22,7 @@ interface Props {
   backgroundGridSV: SharedValue<CellValue[][]>;
   gridWidth: number;
   gridHeight: number;
+  isHinted?: boolean;
 }
 
 export const Vehicle: React.FC<Props> = ({ 
@@ -32,7 +33,8 @@ export const Vehicle: React.FC<Props> = ({
   occupancyMapSV,
   backgroundGridSV,
   gridWidth,
-  gridHeight
+  gridHeight,
+  isHinted
 }) => {
   const isHorizontal = vehicle.direction === 'horizontal';
   
@@ -110,6 +112,7 @@ export const Vehicle: React.FC<Props> = ({
             left: vehicle.x * cellSize + 2,
             backgroundColor: vehicle.color,
           },
+          isHinted && styles.hintedVehicle,
           animatedStyle,
         ]}
       >
@@ -148,5 +151,13 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '900',
     opacity: 0.6,
+  },
+  hintedVehicle: {
+    borderWidth: 4,
+    borderColor: '#FFCC00',
+    shadowColor: '#FFCC00',
+    shadowRadius: 10,
+    shadowOpacity: 1,
+    elevation: 10,
   },
 });

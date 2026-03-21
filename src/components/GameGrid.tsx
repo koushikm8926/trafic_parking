@@ -1,15 +1,23 @@
 import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import { CellValue } from '../types';
+import { HintMove } from '../utils/hintSystem';
 
 interface Props {
   gridWidth: number;
   gridHeight: number;
   backgroundGrid: CellValue[][];
   cellSize: number;
+  activeHint?: HintMove | null;
 }
 
-export const GameGrid: React.FC<Props> = ({ gridWidth, gridHeight, backgroundGrid, cellSize }) => {
+export const GameGrid: React.FC<Props> = ({ 
+  gridWidth, 
+  gridHeight, 
+  backgroundGrid, 
+  cellSize,
+  activeHint 
+}) => {
   const renderCells = () => {
     const cells = [];
     for (let y = 0; y < gridHeight; y++) {
@@ -39,9 +47,23 @@ export const GameGrid: React.FC<Props> = ({ gridWidth, gridHeight, backgroundGri
     return cells;
   };
 
+  const renderHint = () => {
+    if (!activeHint) return null;
+    
+    // We don't have the vehicle data here to calculate the exact cells,
+    // but we can just show a general "Hint Active" indicator or 
+    // we could pass the vehicle from GameScreen if we wanted to be precise.
+    // For now, let's just add a subtly different style to the whole grid 
+    // or wait... GameScreen has the vehicles.
+    return null; 
+  };
+
   return (
     <View style={[styles.gridContainer, { width: gridWidth * cellSize, height: gridHeight * cellSize }]}>
       {renderCells()}
+      {activeHint && (
+        <View style={[StyleSheet.absoluteFill, styles.hintOverlay]} pointerEvents="none" />
+      )}
     </View>
   );
 };
@@ -72,5 +94,11 @@ const styles = StyleSheet.create({
   },
   cellIcon: {
     fontSize: 16,
+  },
+  hintOverlay: {
+    backgroundColor: 'rgba(255, 204, 0, 0.1)',
+    borderWidth: 3,
+    borderColor: '#FFCC00',
+    borderRadius: 8,
   },
 });

@@ -8,6 +8,7 @@ import { Vehicle } from '../components/Vehicle';
 import { buildOccupancyMap } from '../utils/gridUtils';
 import { useGameStore } from '../store/useGameStore';
 import { VehicleData, CellValue } from '../types';
+import { findOptimalMove, HintMove } from '../utils/hintSystem';
 
 interface Props {
   navigation: any;
@@ -30,6 +31,9 @@ export default function GameScreen({ navigation, route }: Props) {
     undo, 
     resetLevel 
   } = useGameStore();
+  
+  const [activeHint, setActiveHint] = React.useState<HintMove | null>(null);
+  const hintTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // SharedValues for the UI thread (worklets)
   const vehiclesSV: SharedValue<VehicleData[]> = useSharedValue(vehicles);
@@ -64,7 +68,34 @@ export default function GameScreen({ navigation, route }: Props) {
 
   const handleCommitMove = useCallback((id: string, dx: number, dy: number) => {
     moveVehicle(id, dx, dy);
+    // Clear hint when a move is made
+    setActiveHint(null);
+    if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current);
   }, [moveVehicle]);
+
+  const handleHint = useCallback(() => {
+    if (!initialLevel || vehicles.length === 0) return;
+    
+    const hint = findOptimalMove(initialLevel, vehicles);
+    if (hint) {
+      setActiveHint(hint);
+      
+      // Clear previous timeout if exists
+      if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current);
+      
+      // Auto-clear hint after 3 seconds
+      hintTimeoutRef.current = setTimeout(() => {
+        setActiveHint(null);
+      }, 3000);
+    }
+  }, [initialLevel, vehicles]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current);
+    };
+  }, []);
 
   if (!initialLevel) {
     return (
@@ -93,6 +124,7 @@ export default function GameScreen({ navigation, route }: Props) {
             gridHeight={initialLevel.gridHeight}
             backgroundGrid={initialLevel.backgroundGrid}
             cellSize={cellSize}
+            activeHint={activeHint}
           />
           {vehicles.map((vehicle) => (
             <Vehicle 
@@ -106,6 +138,7 @@ export default function GameScreen({ navigation, route }: Props) {
               backgroundGridSV={backgroundGridSV}
               gridWidth={initialLevel.gridWidth}
               gridHeight={initialLevel.gridHeight}
+              isHinted={activeHint?.vehicleId === vehicle.id}
             />
           ))}
         </View>
@@ -114,6 +147,13 @@ export default function GameScreen({ navigation, route }: Props) {
       <View style={styles.footer}>
         <TouchableOpacity style={styles.footerButton} onPress={undo}>
           <Text style={styles.footerButtonText}>Undo</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.footerButton, styles.hintButton]} 
+          onPress={handleHint}
+        >
+          <Text style={styles.footerButtonText}>Hint</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.footerButton} onPress={resetLevel}>
@@ -192,6 +232,10 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  hintButton: {
+    backgroundColor: '#FFCC00',
+    borderColor: '#E6B800',
   },
   errorText: {
     color: '#FF3B30',
