@@ -46,16 +46,7 @@ export default function HomeScreen({ navigation }: Props) {
       style={styles.container}
       resizeMode="cover"
     >
-      <Pressable
-        style={styles.settingsButton}
-        onPress={() => navigation.navigate('SettingsScreen')}
-      >
-        <Image
-          source={require('../../settings.png')}
-          style={styles.settingsIcon}
-          resizeMode="contain"
-        />
-      </Pressable>
+      {/* Settings Button removed */}
       <View style={styles.topContainer}>
         <Image
           source={require('../../top.png')}
