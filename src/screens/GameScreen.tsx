@@ -9,6 +9,9 @@ import { buildOccupancyMap } from '../utils/gridUtils';
 import { useGameStore } from '../store/useGameStore';
 import { VehicleData, CellValue } from '../types';
 import { findOptimalMove, HintMove } from '../utils/hintSystem';
+import { soundManager } from '../utils/soundManager';
+import { isStuck } from '../utils/gameLogic';
+import { haptics } from '../utils/haptics';
 
 interface Props {
   navigation: any;
@@ -33,6 +36,7 @@ export default function GameScreen({ navigation, route }: Props) {
   } = useGameStore();
   
   const [activeHint, setActiveHint] = React.useState<HintMove | null>(null);
+  const [isStuckState, setIsStuckState] = React.useState(false);
   const hintTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // SharedValues for the UI thread (worklets)
@@ -40,9 +44,13 @@ export default function GameScreen({ navigation, route }: Props) {
   const occupancyMapSV: SharedValue<Record<string, string>> = useSharedValue({});
   const backgroundGridSV: SharedValue<CellValue[][]> = useSharedValue(initialLevel?.backgroundGrid || []);
 
-  // Initialize level
+  // Initialize level and load sounds
   useEffect(() => {
     initLevel(levelId);
+    soundManager.loadSounds();
+    return () => {
+      soundManager.unloadSounds();
+    };
   }, [levelId, initLevel]);
 
   // Sync SharedValues with Store State
@@ -54,12 +62,20 @@ export default function GameScreen({ navigation, route }: Props) {
     }
   }, [vehicles, initialLevel, vehiclesSV, occupancyMapSV, backgroundGridSV]);
 
-  // Win Detection
+  // Win and Stuck Detection
   useEffect(() => {
     if (isWin) {
+      soundManager.playSound('win');
+      haptics.notification('success');
       navigation.replace('Win', { levelId, moves: moveCount, stars: 3 });
+    } else if (initialLevel && vehicles.length > 0) {
+      const stuck = isStuck(initialLevel, vehicles);
+      setIsStuckState(stuck);
+      if (stuck) {
+        haptics.notification('warning');
+      }
     }
-  }, [isWin, levelId, moveCount, navigation]);
+  }, [isWin, levelId, moveCount, navigation, vehicles, initialLevel]);
 
   const cellSize = useMemo(() => {
     if (!initialLevel) return 0;
@@ -68,6 +84,7 @@ export default function GameScreen({ navigation, route }: Props) {
 
   const handleCommitMove = useCallback((id: string, dx: number, dy: number) => {
     moveVehicle(id, dx, dy);
+    soundManager.playSound('move');
     // Clear hint when a move is made
     setActiveHint(null);
     if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current);
@@ -141,6 +158,12 @@ export default function GameScreen({ navigation, route }: Props) {
               isHinted={activeHint?.vehicleId === vehicle.id}
             />
           ))}
+          {isStuckState && (
+            <View style={styles.stuckOverlay} pointerEvents="none">
+              <Text style={styles.stuckText}>STUCK!</Text>
+              <Text style={styles.stuckSubText}>Try Undo or Reset</Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -242,6 +265,28 @@ const styles = StyleSheet.create({
     fontSize: 18,
     textAlign: 'center',
     marginTop: 50,
+  },
+  stuckOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 59, 48, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#FF3B30',
+  },
+  stuckText: {
+    color: '#FFF',
+    fontSize: 40,
+    fontWeight: '900',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  stuckSubText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

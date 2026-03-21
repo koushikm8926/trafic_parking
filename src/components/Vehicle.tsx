@@ -10,6 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { VehicleData, CellValue } from '../types';
 import { canMove } from '../engine/Grid';
+import { haptics } from '../utils/haptics';
 
 interface Props {
   vehicle: VehicleData;
@@ -44,8 +45,15 @@ export const Vehicle: React.FC<Props> = ({
   
   // Track if we've committed an escape to prevent double triggers
   const isEscaping = useSharedValue(false);
+  
+  // Track last blocked step to avoid excessive haptics
+  const lastBlockedStep = useSharedValue(0);
 
   const panGesture = Gesture.Pan()
+    .onBegin(() => {
+      'worklet';
+      runOnJS(haptics.selection)();
+    })
     .onUpdate((event) => {
       'worklet';
       
@@ -62,6 +70,16 @@ export const Vehicle: React.FC<Props> = ({
           backgroundGridSV.value
         );
         translateX.value = steps * cellSize;
+        
+        // Haptic on block
+        if (Math.abs(event.translationX / cellSize) > Math.abs(steps) + 0.1) {
+          if (lastBlockedStep.value !== steps) {
+            runOnJS(haptics.impact)('light');
+            lastBlockedStep.value = steps;
+          }
+        } else {
+          lastBlockedStep.value = 0;
+        }
       } else {
         const deltaY = event.translationY / cellSize;
         const steps = canMove(
@@ -75,6 +93,16 @@ export const Vehicle: React.FC<Props> = ({
           backgroundGridSV.value
         );
         translateY.value = steps * cellSize;
+        
+        // Haptic on block
+        if (Math.abs(event.translationY / cellSize) > Math.abs(steps) + 0.1) {
+          if (lastBlockedStep.value !== steps) {
+            runOnJS(haptics.impact)('light');
+            lastBlockedStep.value = steps;
+          }
+        } else {
+          lastBlockedStep.value = 0;
+        }
       }
     })
     .onEnd(() => {
@@ -84,9 +112,11 @@ export const Vehicle: React.FC<Props> = ({
       const deltaY = Math.round(translateY.value / cellSize);
 
       if (deltaX !== 0 || deltaY !== 0) {
+        runOnJS(haptics.selection)();
         runOnJS(onCommitMove)(vehicle.id, deltaX, deltaY);
       }
       
+      lastBlockedStep.value = 0;
       translateX.value = withSpring(0);
       translateY.value = withSpring(0);
     });

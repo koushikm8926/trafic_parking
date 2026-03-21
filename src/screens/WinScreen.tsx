@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import ConfettiCannon from 'react-native-confetti-cannon';
 import { saveLevelResult, unlockLevel } from '../utils/storage';
 
 interface Props {
@@ -59,6 +60,13 @@ export default function WinScreen({ navigation, route }: Props) {
           </TouchableOpacity>
         </View>
       </View>
+      
+      <ConfettiCannon 
+        count={200} 
+        origin={{ x: Dimensions.get('window').width / 2, y: -20 }} 
+        autoStart={true}
+        fadeOut={true}
+      />
     </SafeAreaView>
   );
 }
