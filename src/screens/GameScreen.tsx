@@ -184,22 +184,6 @@ export default function GameScreen({ navigation, route }: Props) {
         </View>
       </View>
 
-      <View style={styles.footer}>
-        <TouchableOpacity style={styles.footerButton} onPress={undo}>
-          <Text style={styles.footerButtonText}>Undo</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.footerButton, styles.hintButton]}
-          onPress={handleHint}
-        >
-          <Text style={styles.footerButtonText}>Hint</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.footerButton} onPress={resetLevel}>
-          <Text style={styles.footerButtonText}>Reset</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }
@@ -252,31 +236,6 @@ const styles = StyleSheet.create({
   },
   gridWrapper: {
     position: 'relative',
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.05)',
-  },
-  footerButton: {
-    flex: 0.45,
-    padding: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-  },
-  footerButtonText: {
-    color: '#1E1E2C',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  hintButton: {
-    backgroundColor: '#FFCC00',
-    borderColor: '#E6B800',
   },
   errorText: {
     color: '#FF3B30',
