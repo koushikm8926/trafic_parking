@@ -190,7 +190,7 @@ export default function GameScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1E1E2C',
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
@@ -200,17 +200,17 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     borderRadius: 8,
   },
   backButtonText: {
-    color: '#FFF',
+    color: '#1E1E2C',
     fontWeight: 'bold',
   },
   title: {
     flex: 1,
     textAlign: 'center',
-    color: '#FFF',
+    color: '#1E1E2C',
     fontSize: 24,
     fontWeight: 'bold',
   },
@@ -240,19 +240,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    borderTopColor: 'rgba(0, 0, 0, 0.05)',
   },
   footerButton: {
     flex: 0.45,
     padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
   footerButtonText: {
-    color: '#FFF',
+    color: '#1E1E2C',
     fontSize: 16,
     fontWeight: 'bold',
   },
