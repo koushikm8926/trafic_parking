@@ -13,6 +13,9 @@ import Animated, {
 import { VehicleData, CellValue } from '../types';
 import { canMove } from '../engine/Grid';
 import { haptics } from '../utils/haptics';
+import { Image } from 'react-native';
+
+const TAXI_IMAGE = require('../../assets/vehicles/taxi.png');
 
 interface Props {
   vehicle: VehicleData;
@@ -290,15 +293,31 @@ export const Vehicle: React.FC<Props> = ({
             height: isHorizontal ? cellSize - 4 : vehicle.length * cellSize - 4,
             top: vehicle.y * cellSize + 2,
             left: vehicle.x * cellSize + 2,
-            backgroundColor: vehicle.color,
+            backgroundColor: vehicle.color === '#FFCC00' ? 'transparent' : vehicle.color,
           },
           isHinted && styles.hintedVehicle,
           animatedStyle,
         ]}
       >
-        <Animated.View style={styles.inner}>
-          <Text style={styles.idText}>{vehicle.id.toUpperCase()}</Text>
-        </Animated.View>
+        {vehicle.color === '#FFCC00' ? (
+          <Image 
+            source={TAXI_IMAGE}
+            style={[
+              styles.taxiImage,
+              {
+                // The image source is vertical (length > width)
+                width: cellSize - 4,
+                height: vehicle.length * cellSize - 4,
+                transform: [{ rotate: isHorizontal ? '-90deg' : '0deg' }]
+              }
+            ]}
+            resizeMode="stretch"
+          />
+        ) : (
+          <Animated.View style={styles.inner}>
+            <Text style={styles.idText}>{vehicle.id.toUpperCase()}</Text>
+          </Animated.View>
+        )}
       </Animated.View>
     </GestureDetector>
   );
@@ -315,6 +334,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  taxiImage: {
+    position: 'absolute',
   },
   inner: {
     flex: 1,
