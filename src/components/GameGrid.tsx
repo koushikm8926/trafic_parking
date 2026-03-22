@@ -35,9 +35,15 @@ export const GameGrid: React.FC<Props> = ({
                 left: x * cellSize,
               },
               cellValue === 2 && styles.wallCell,
+              cellValue === 1 && styles.roadCell,
             ]}
           >
             {cellValue === 2 && <Text style={styles.cellIcon}>🚧</Text>}
+            {cellValue === 1 && (
+              <View style={styles.roadMarkings}>
+                <View style={styles.roadMarking} />
+              </View>
+            )}
           </View>
         );
       }
@@ -89,6 +95,20 @@ const styles = StyleSheet.create({
   },
   wallCell: {
     backgroundColor: '#E0E0E0',
+  },
+  roadCell: {
+    backgroundColor: '#333333', // Dark asphalt color
+  },
+  roadMarkings: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  roadMarking: {
+    width: '40%',
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    borderRadius: 2,
   },
   cellIcon: {
     fontSize: 16,

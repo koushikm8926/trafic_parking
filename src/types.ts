@@ -1,6 +1,6 @@
 // src/types.ts
 export type Direction = 'horizontal' | 'vertical';
-export type CellValue = 0 | 2 | 3; // 0=empty, 2=wall, 3=exit
+export type CellValue = 0 | 1 | 2 | 3; // 0=empty, 1=road, 2=wall, 3=exit
 
 export interface VehicleData {
   id: string;           // 'v1', 'v2', 'truck_a' ...
