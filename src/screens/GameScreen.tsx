@@ -23,15 +23,15 @@ const { width: screenWidth } = Dimensions.get('window');
 export default function GameScreen({ navigation, route }: Props) {
   const levelId = route.params?.levelId || 1;
   const initialLevel = useMemo(() => getLevelById(levelId), [levelId]);
-  
+
   // Zustand Store
-  const { 
-    vehicles, 
-    moveCount, 
-    isWin, 
-    initLevel, 
-    moveVehicle, 
-    undo, 
+  const {
+    vehicles,
+    moveCount,
+    isWin,
+    initLevel,
+    moveVehicle,
+    undo,
     resetLevel,
     removeEscapedVehicle
   } = useGameStore();
@@ -97,14 +97,14 @@ export default function GameScreen({ navigation, route }: Props) {
 
   const handleHint = useCallback(() => {
     if (!initialLevel || vehicles.length === 0) return;
-    
+
     const hint = findOptimalMove(initialLevel, vehicles);
     if (hint) {
       setActiveHint(hint);
-      
+
       // Clear previous timeout if exists
       if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current);
-      
+
       // Auto-clear hint after 3 seconds
       hintTimeoutRef.current = setTimeout(() => {
         setActiveHint(null);
@@ -135,7 +135,7 @@ export default function GameScreen({ navigation, route }: Props) {
         </TouchableOpacity>
         <Text style={styles.title}>Level {levelId}</Text>
         <View style={styles.moveBadge}>
-           <Text style={styles.moveText}>{moveCount}</Text>
+          <Text style={styles.moveText}>{moveCount}</Text>
         </View>
       </View>
 
@@ -149,10 +149,10 @@ export default function GameScreen({ navigation, route }: Props) {
             activeHint={activeHint}
           />
           {vehicles.map((vehicle) => (
-            <Vehicle 
-              key={vehicle.id} 
-              vehicle={vehicle} 
-              cellSize={cellSize} 
+            <Vehicle
+              key={vehicle.id}
+              vehicle={vehicle}
+              cellSize={cellSize}
               onCommitMove={handleCommitMove}
               onEscape={handleEscapeComplete}
               vehiclesSV={vehiclesSV}
@@ -177,13 +177,13 @@ export default function GameScreen({ navigation, route }: Props) {
           <Text style={styles.footerButtonText}>Undo</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.footerButton, styles.hintButton]} 
+        <TouchableOpacity
+          style={[styles.footerButton, styles.hintButton]}
           onPress={handleHint}
         >
           <Text style={styles.footerButtonText}>Hint</Text>
         </TouchableOpacity>
-        
+
         <TouchableOpacity style={styles.footerButton} onPress={resetLevel}>
           <Text style={styles.footerButtonText}>Reset</Text>
         </TouchableOpacity>
@@ -226,6 +226,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     minWidth: 40,
     alignItems: 'center',
+    marginRight: 60,
   },
   moveText: {
     color: '#FFF',

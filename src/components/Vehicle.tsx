@@ -16,6 +16,7 @@ import { haptics } from '../utils/haptics';
 import { Image } from 'react-native';
 
 const GREEN_BUS_IMAGE = require('../../assets/vehicles/green-bus.png');
+const WHITE_VAN_IMAGE = require('../../assets/vehicles/white-van.png');
 
 interface Props {
   vehicle: VehicleData;
@@ -293,15 +294,15 @@ export const Vehicle: React.FC<Props> = ({
             height: isHorizontal ? cellSize - 4 : vehicle.length * cellSize - 4,
             top: vehicle.y * cellSize + 2,
             left: vehicle.x * cellSize + 2,
-            backgroundColor: (vehicle.color === '#34C759') ? 'transparent' : vehicle.color,
+            backgroundColor: (vehicle.color === '#34C759' || vehicle.color === '#007AFF') ? 'transparent' : vehicle.color,
           },
           isHinted && styles.hintedVehicle,
           animatedStyle,
         ]}
       >
-        {(vehicle.color === '#34C759') ? (
+        {(vehicle.color === '#34C759' || vehicle.color === '#007AFF') ? (
           <Image 
-            source={GREEN_BUS_IMAGE}
+            source={vehicle.color === '#34C759' ? GREEN_BUS_IMAGE : WHITE_VAN_IMAGE}
             style={[
               styles.vehicleImage,
               {
