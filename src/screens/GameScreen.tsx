@@ -190,7 +190,7 @@ export default function GameScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#8ac17e',
   },
   header: {
     flexDirection: 'row',

@@ -11,12 +11,12 @@ interface Props {
   activeHint?: HintMove | null;
 }
 
-export const GameGrid: React.FC<Props> = ({ 
-  gridWidth, 
-  gridHeight, 
-  backgroundGrid, 
+export const GameGrid: React.FC<Props> = ({
+  gridWidth,
+  gridHeight,
+  backgroundGrid,
   cellSize,
-  activeHint 
+  activeHint
 }) => {
   const renderCells = () => {
     const cells = [];
@@ -47,13 +47,13 @@ export const GameGrid: React.FC<Props> = ({
 
   const renderHint = () => {
     if (!activeHint) return null;
-    
+
     // We don't have the vehicle data here to calculate the exact cells,
     // but we can just show a general "Hint Active" indicator or 
     // we could pass the vehicle from GameScreen if we wanted to be precise.
     // For now, let's just add a subtly different style to the whole grid 
     // or wait... GameScreen has the vehicles.
-    return null; 
+    return null;
   };
 
   return (
@@ -68,12 +68,12 @@ export const GameGrid: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   gridContainer: {
-    backgroundColor: '#F8F8F8',
+    backgroundColor: '#b6b6b6',
     borderRadius: 12,
     overflow: 'hidden',
     position: 'relative',
     borderWidth: 3,
-    borderColor: '#E0E0E0',
+    borderColor: '#CCCCCC',
     elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
