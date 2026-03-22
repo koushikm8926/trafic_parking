@@ -129,11 +129,11 @@ export default function GameScreen({ navigation, route }: Props) {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Image 
-        source={LEVEL_TOP_IMAGE} 
-        style={styles.headerTopImage} 
-        resizeMode="stretch" 
+    <View style={styles.container}>
+      <Image
+        source={LEVEL_TOP_IMAGE}
+        style={styles.headerTopImage}
+        resizeMode="stretch"
       />
 
       <View style={styles.gameArea}>
@@ -169,7 +169,7 @@ export default function GameScreen({ navigation, route }: Props) {
         </View>
       </View>
 
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   },
   headerTopImage: {
     width: screenWidth,
-    height: 160,
+    height: 300,
   },
   gameArea: {
     flex: 1,
