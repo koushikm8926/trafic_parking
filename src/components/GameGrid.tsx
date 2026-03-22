@@ -64,6 +64,10 @@ export const GameGrid: React.FC<Props> = ({
 
   return (
     <View style={[styles.gridContainer, { width: gridWidth * cellSize, height: gridHeight * cellSize }]}>
+      {/* Full-width road bars for top and bottom */}
+      <View style={[styles.roadCell, { position: 'absolute', top: 0, left: -1000, right: -1000, height: cellSize }]} pointerEvents="none" />
+      <View style={[styles.roadCell, { position: 'absolute', top: (gridHeight - 1) * cellSize, left: -1000, right: -1000, height: cellSize }]} pointerEvents="none" />
+      
       {renderCells()}
       {activeHint && (
         <View style={[StyleSheet.absoluteFill, styles.hintOverlay]} pointerEvents="none" />
@@ -76,7 +80,7 @@ const styles = StyleSheet.create({
   gridContainer: {
     backgroundColor: '#b6b6b6',
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: 'visible', // Changed from 'hidden' to 'visible'
     position: 'relative',
     borderWidth: 3,
     borderColor: '#CCCCCC',
