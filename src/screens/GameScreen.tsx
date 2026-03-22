@@ -176,7 +176,7 @@ export default function GameScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#8ac17e',
+    backgroundColor: '#2F7953',
   },
   headerTopImage: {
     width: screenWidth,
