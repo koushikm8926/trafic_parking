@@ -129,6 +129,18 @@ export default function GameScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View
+        style={{
+          position: 'absolute',
+          right: (screenWidth - initialLevel.gridWidth * cellSize) / 2,
+          top: 0,
+          bottom: (Dimensions.get('window').height - initialLevel.gridHeight * cellSize) / 2 + cellSize,
+          width: cellSize,
+          backgroundColor: '#333333',
+          zIndex: 0,
+        }}
+        pointerEvents="none"
+      />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backButtonText}>Back</Text>
