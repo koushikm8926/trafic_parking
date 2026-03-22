@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useCallback } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Dimensions } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Dimensions, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSharedValue, SharedValue } from 'react-native-reanimated';
 import { getLevelById } from '../levels';
@@ -19,6 +19,7 @@ interface Props {
 }
 
 const { width: screenWidth } = Dimensions.get('window');
+const LEVEL_TOP_IMAGE = require('../../level-top.png');
 
 export default function GameScreen({ navigation, route }: Props) {
   const levelId = route.params?.levelId || 1;
@@ -129,15 +130,11 @@ export default function GameScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Level {levelId}</Text>
-        <View style={styles.moveBadge}>
-          <Text style={styles.moveText}>{moveCount}</Text>
-        </View>
-      </View>
+      <Image 
+        source={LEVEL_TOP_IMAGE} 
+        style={styles.headerTopImage} 
+        resizeMode="stretch" 
+      />
 
       <View style={styles.gameArea}>
         <View style={styles.gridWrapper}>
@@ -181,46 +178,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#8ac17e',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-  },
-  backButton: {
-    padding: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    borderRadius: 8,
-  },
-  backButtonText: {
-    color: '#1E1E2C',
-    fontWeight: 'bold',
-  },
-  title: {
-    flex: 1,
-    textAlign: 'center',
-    color: '#1E1E2C',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  moveBadge: {
-    backgroundColor: '#4CAF50',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    minWidth: 40,
-    alignItems: 'center',
-    marginRight: 60,
-  },
-  moveText: {
-    color: '#FFF',
-    fontWeight: 'bold',
+  headerTopImage: {
+    width: screenWidth,
+    height: 160,
   },
   gameArea: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 0,
   },
   gridWrapper: {
     position: 'relative',
