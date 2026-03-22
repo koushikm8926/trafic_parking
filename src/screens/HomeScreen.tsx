@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   footerText: {
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '500',
     letterSpacing: 0.5,
