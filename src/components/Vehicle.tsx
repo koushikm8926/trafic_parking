@@ -18,7 +18,7 @@ interface Props {
   vehicle: VehicleData;
   cellSize: number;
   onCommitMove: (vehicleId: string, deltaX: number, deltaY: number) => void;
-  onEscape: (vehicleId: string, direction: string) => void;
+  onEscape: (vehicleId: string) => void;
   // SharedValues for UI-thread access
   vehiclesSV: SharedValue<VehicleData[]>;
   occupancyMapSV: SharedValue<Record<string, string>>;
@@ -28,10 +28,11 @@ interface Props {
   isHinted?: boolean;
 }
 
-export const Vehicle: React.FC<Props> = ({ 
-  vehicle, 
-  cellSize, 
-  onCommitMove, 
+export const Vehicle: React.FC<Props> = ({
+  vehicle,
+  cellSize,
+  onCommitMove,
+  onEscape,
   vehiclesSV,
   occupancyMapSV,
   backgroundGridSV,
@@ -40,50 +41,143 @@ export const Vehicle: React.FC<Props> = ({
   isHinted
 }) => {
   const isHorizontal = vehicle.direction === 'horizontal';
-  
-  // Shared values for the gesture translation
+
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
-  
-  // Track the position that's currently 'committed' in the store
-  // to prevent flickering when the base position jumps
+  const rotation  = useSharedValue(0);
+
   const committedX = useSharedValue(vehicle.x);
   const committedY = useSharedValue(vehicle.y);
+  const wasEscaping = React.useRef(false);
 
-  // Sync committed shared values when props change
+  // Sync to store when vehicle moves normally
   useEffect(() => {
     committedX.value = vehicle.x;
     committedY.value = vehicle.y;
-    // Reset translation as the base position has updated
-    translateX.value = 0;
-    translateY.value = 0;
-  }, [vehicle.x, vehicle.y]);
+    if (!vehicle.isEscaping) {
+      translateX.value = 0;
+      translateY.value = 0;
+      rotation.value  = 0;
+      wasEscaping.current = false;
+    }
+  }, [vehicle.x, vehicle.y, vehicle.isEscaping]);
 
-  // Track if we've committed an escape to prevent double triggers
-  const isEscaping = useSharedValue(false);
-  
-  // Track last blocked step to avoid excessive haptics
-  const lastBlockedStep = useSharedValue(0);
+  // ─── Lane-Exit Animation ───────────────────────────────────────────
+  useEffect(() => {
+    if (!vehicle.isEscaping || wasEscaping.current) return;
+    wasEscaping.current = true;
+
+    const W  = cellSize;
+    const L  = vehicle.length;
+    const ef = vehicle.escapedFrom; // 'top' | 'bottom' | 'left' | 'right'
+
+    // Current visual center of the car in grid units (relative to its top-left x,y)
+    const carCx = vehicle.x + (isHorizontal ? L / 2 : 0.5);
+    const carCy = vehicle.y + (isHorizontal ? 0.5 : L / 2);
+
+    // Helper: animate one waypoint and continue chain
+    const animate = (
+      dxPx: number,           // accumulated translateX target in pixels
+      dyPx: number,           // accumulated translateY target in pixels
+      rotRad: number,         // target rotation in radians
+      durationMs: number,
+      next: () => void
+    ) => {
+      'worklet';
+      rotation.value  = withTiming(rotRad, { duration: durationMs });
+      translateX.value = withTiming(dxPx,  { duration: durationMs });
+      translateY.value = withTiming(dyPx,  { duration: durationMs, easing: Easing.out(Easing.quad) }, (done) => {
+        'worklet';
+        if (done) next();
+      });
+    };
+
+    // ── VERTICAL CAR hits TOP or BOTTOM road ──────────────────────────
+    if (!isHorizontal && (ef === 'top' || ef === 'bottom')) {
+      // Which side does the car exit?  left-half → left exit, right-half → right exit
+      const goRight = carCx >= gridWidth / 2;
+
+      // Step 1: rotate 90° to become horizontal, slide to road center y
+      const roadY   = ef === 'top' ? 0.5 : gridHeight - 0.5; // center of top/bottom road row
+      const targetDy = (roadY - carCy) * W;                  // delta from original position
+      const targetRot = goRight ? Math.PI / 2 : -Math.PI / 2; // face right or left
+
+      // Step 2: slide off-screen horizontally
+      const exitDx = goRight ? (gridWidth + L) * W : -(gridWidth + L) * W;
+
+      animate(0, targetDy, targetRot, 350, () => {
+        'worklet';
+        const offScreenDx = exitDx - (carCx - (vehicle.x + (isHorizontal ? L / 2 : 0.5))) * W;
+        // After rotation the car is visually horizontal; slide it off
+        translateX.value = withTiming(exitDx, { duration: 700, easing: Easing.in(Easing.quad) }, (done) => {
+          'worklet';
+          if (done) runOnJS(onEscape)(vehicle.id);
+        });
+      });
+      return;
+    }
+
+    // ── HORIZONTAL CAR hits LEFT or RIGHT road ────────────────────────
+    if (isHorizontal && (ef === 'left' || ef === 'right')) {
+      const goTop    = carCy <= gridHeight / 2;       // nearest horizontal highway
+      const roadX    = ef === 'left' ? 0.5 : gridWidth - 0.5;  // center of left/right road lane
+      const targetDx = (roadX - carCx) * W;          // snap car centre to road lane x
+
+      // Choose nearer corner (top row centre y=0.5 or bottom row centre y=gridHeight-0.5)
+      const cornerY   = goTop ? 0.5 : gridHeight - 0.5;
+      const targetDy1 = (cornerY - carCy) * W;       // drive to the corner
+
+      // After turning at corner: same exit side → left or right
+      const exitRight = ef === 'right';
+      const exitRot   = exitRight ? 0 : Math.PI;     // face right or left again
+      const exitDx    = exitRight ? (gridWidth + L) * W : -(gridWidth + L) * W;
+
+      const vertRot = goTop ? -Math.PI / 2 : Math.PI / 2; // face up or down
+
+      // Step 1: rotate vertical, snap to road lane x, start driving to corner
+      animate(targetDx, 0, vertRot, 300, () => {
+        'worklet';
+        // Step 2: drive along vertical lane to top/bottom road
+        translateX.value = withTiming(targetDx, { duration: 50 });
+        translateY.value = withTiming(targetDy1, { duration: Math.abs(targetDy1) / W * 180 + 200, easing: Easing.linear }, (done) => {
+          'worklet';
+          if (!done) return;
+          // Step 3: rotate back to horizontal (facing exit direction)
+          rotation.value  = withTiming(exitRot, { duration: 300 });
+          // Step 4: drive off-screen
+          translateX.value = withTiming(exitDx + targetDx, { duration: 700, easing: Easing.in(Easing.quad) }, (done2) => {
+            'worklet';
+            if (done2) runOnJS(onEscape)(vehicle.id);
+          });
+        });
+      });
+      return;
+    }
+
+    // Fallback: just remove immediately
+    runOnJS(onEscape)(vehicle.id);
+  }, [vehicle.isEscaping]);
+  // ──────────────────────────────────────────────────────────────────
+
+  const isEscapingShared = useSharedValue(false);
+  const lastBlockedStep  = useSharedValue(0);
 
   const panGesture = Gesture.Pan()
+    .enabled(!vehicle.isEscaping)  // disable dragging while escaping
     .onBegin(() => {
       'worklet';
       runOnJS(haptics.selection)();
     })
     .onUpdate((event) => {
       'worklet';
-      
+
       if (isHorizontal) {
-        // Find maximum integer steps in both directions for collision boundaries
-        const maxRight = canMove(vehicle.id, gridWidth, 0, vehiclesSV.value, occupancyMapSV.value, gridWidth, gridHeight, backgroundGridSV.value);
-        const maxLeft = canMove(vehicle.id, -gridWidth, 0, vehiclesSV.value, occupancyMapSV.value, gridWidth, gridHeight, backgroundGridSV.value);
-        
-        // Clamp the raw translation between the allowed boundaries
+        const maxRight = canMove(vehicle.id, gridWidth,  0, vehiclesSV.value, occupancyMapSV.value, gridWidth, gridHeight, backgroundGridSV.value);
+        const maxLeft  = canMove(vehicle.id, -gridWidth, 0, vehiclesSV.value, occupancyMapSV.value, gridWidth, gridHeight, backgroundGridSV.value);
         const limitRight = maxRight * cellSize;
-        const limitLeft = maxLeft * cellSize;
+        const limitLeft  = maxLeft  * cellSize;
         translateX.value = Math.max(limitLeft, Math.min(event.translationX, limitRight));
 
-        // Haptic on boundary hit
         const steps = Math.round(translateX.value / cellSize);
         if (lastBlockedStep.value !== steps) {
           if (translateX.value === limitRight || translateX.value === limitLeft) {
@@ -92,16 +186,12 @@ export const Vehicle: React.FC<Props> = ({
           lastBlockedStep.value = steps;
         }
       } else {
-        // Find maximum integer steps in both directions for collision boundaries
-        const maxDown = canMove(vehicle.id, 0, gridHeight, vehiclesSV.value, occupancyMapSV.value, gridWidth, gridHeight, backgroundGridSV.value);
-        const maxUp = canMove(vehicle.id, 0, -gridHeight, vehiclesSV.value, occupancyMapSV.value, gridWidth, gridHeight, backgroundGridSV.value);
-        
-        // Clamp the raw translation between the allowed boundaries
+        const maxDown = canMove(vehicle.id, 0,  gridHeight, vehiclesSV.value, occupancyMapSV.value, gridWidth, gridHeight, backgroundGridSV.value);
+        const maxUp   = canMove(vehicle.id, 0, -gridHeight, vehiclesSV.value, occupancyMapSV.value, gridWidth, gridHeight, backgroundGridSV.value);
         const limitDown = maxDown * cellSize;
-        const limitUp = maxUp * cellSize;
+        const limitUp   = maxUp   * cellSize;
         translateY.value = Math.max(limitUp, Math.min(event.translationY, limitDown));
 
-        // Haptic on boundary hit
         const steps = Math.round(translateY.value / cellSize);
         if (lastBlockedStep.value !== steps) {
           if (translateY.value === limitDown || translateY.value === limitUp) {
@@ -122,28 +212,21 @@ export const Vehicle: React.FC<Props> = ({
       let deltaX = 0;
       let deltaY = 0;
 
-      // Thresholds to trigger slide
       const translationThreshold = cellSize * 0.15;
       const velocityThreshold = 100;
 
       if (isHorizontal) {
         let direction = 0;
-        if (Math.abs(finalTranslateX) > translationThreshold) {
-          direction = Math.sign(finalTranslateX);
-        } else if (Math.abs(vx) > velocityThreshold) {
-          direction = Math.sign(vx);
-        }
+        if (Math.abs(finalTranslateX) > translationThreshold)      direction = Math.sign(finalTranslateX);
+        else if (Math.abs(vx) > velocityThreshold)                  direction = Math.sign(vx);
 
         if (direction !== 0) {
           deltaX = canMove(vehicle.id, direction * gridWidth, 0, vehiclesSV.value, occupancyMapSV.value, gridWidth, gridHeight, backgroundGridSV.value);
         }
       } else {
         let direction = 0;
-        if (Math.abs(finalTranslateY) > translationThreshold) {
-          direction = Math.sign(finalTranslateY);
-        } else if (Math.abs(vy) > velocityThreshold) {
-          direction = Math.sign(vy);
-        }
+        if (Math.abs(finalTranslateY) > translationThreshold)      direction = Math.sign(finalTranslateY);
+        else if (Math.abs(vy) > velocityThreshold)                  direction = Math.sign(vy);
 
         if (direction !== 0) {
           deltaY = canMove(vehicle.id, 0, direction * gridHeight, vehiclesSV.value, occupancyMapSV.value, gridWidth, gridHeight, backgroundGridSV.value);
@@ -151,29 +234,23 @@ export const Vehicle: React.FC<Props> = ({
       }
 
       if (deltaX !== 0 || deltaY !== 0) {
-        // Find final position in pixels
         const targetX = deltaX * cellSize;
         const targetY = deltaY * cellSize;
-
-        // Calculate dynamic duration based on distance to ensure constant speed
         const distance = Math.abs(isHorizontal ? (targetX - finalTranslateX) : (targetY - finalTranslateY));
         const cellsMoved = distance / cellSize;
-        // 200ms per cell for a consistent, deliberate slide without a maximum time cap
         const calculatedDuration = Math.max(200, cellsMoved * 200);
 
-        // Slide animation
         const onFinish = (finished?: boolean) => {
           'worklet';
           if (finished) {
             runOnJS(haptics.selection)();
             runOnJS(onCommitMove)(vehicle.id, deltaX, deltaY);
-            // translateX/Y will be reset in useEffect when props change
           }
         };
 
         const config = {
           duration: calculatedDuration,
-          easing: Easing.out(Easing.cubic), // Suited for a smoother stop
+          easing: Easing.out(Easing.cubic),
         };
 
         if (isHorizontal) {
@@ -184,25 +261,21 @@ export const Vehicle: React.FC<Props> = ({
           translateY.value = withTiming(targetY, config, onFinish);
         }
       } else {
-        // Snap back if no move was made
         translateX.value = withSpring(0);
         translateY.value = withSpring(0);
       }
-      
+
       lastBlockedStep.value = 0;
     });
 
   const animatedStyle = useAnimatedStyle(() => {
-    // Compensation logic:
-    // If vehicle.x changed on JS thread but translateX hasn't been reset to 0 yet on UI thread,
-    // we subtract the difference to keep the visual position stable.
     const offsetX = (vehicle.x - committedX.value) * cellSize;
     const offsetY = (vehicle.y - committedY.value) * cellSize;
-
     return {
       transform: [
         { translateX: translateX.value - offsetX },
         { translateY: translateY.value - offsetY },
+        { rotateZ: `${rotation.value}rad` },
       ] as any,
     };
   });

@@ -18,6 +18,7 @@ interface GameState {
   // Actions
   initLevel: (levelId: number) => void;
   moveVehicle: (vehicleId: string, deltaX: number, deltaY: number) => void;
+  removeEscapedVehicle: (vehicleId: string) => void;
   undo: () => void;
   resetLevel: () => void;
 }
@@ -69,12 +70,22 @@ export const useGameStore = create<GameState>((set, get) => ({
       );
 
       if (escapeStatus.canEscape) {
-        const afterEscape = nextVehicles.filter(v => v.id !== vehicleId);
+        // Determine which wall the vehicle hit based on its position
+        let escapedFrom: 'top' | 'bottom' | 'left' | 'right' = 'right';
+        if (movedVehicle.direction === 'vertical') {
+          escapedFrom = movedVehicle.y <= 0 ? 'top' : 'bottom';
+        } else {
+          escapedFrom = movedVehicle.x <= 0 ? 'left' : 'right';
+        }
+
+        const afterEscape = nextVehicles.map(v =>
+          v.id === vehicleId ? { ...v, isEscaping: true, escapedFrom } : v
+        );
         set({
           vehicles: afterEscape,
           history: newHistory,
           moveCount: moveCount + 1,
-          isWin: afterEscape.length === 0,
+          isWin: false, // defer until animation completes
         });
         return;
       }
@@ -84,6 +95,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       vehicles: nextVehicles,
       history: newHistory,
       moveCount: moveCount + 1,
+    });
+  },
+
+  removeEscapedVehicle: (vehicleId: string) => {
+    const { vehicles } = get();
+    const remaining = vehicles.filter(v => v.id !== vehicleId);
+    // Win only when all non-escaping (active) vehicles are gone
+    const activeRemaining = remaining.filter(v => !v.isEscaping);
+    set({
+      vehicles: remaining,
+      isWin: activeRemaining.length === 0,
     });
   },
 

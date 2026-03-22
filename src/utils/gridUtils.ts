@@ -31,6 +31,7 @@ export const buildOccupancyMap = (vehicles: VehicleData[], gridWidth: number, gr
   'worklet';
   const map: Record<string, string> = {};
   vehicles.forEach(vehicle => {
+    if (vehicle.isEscaping) return; // don't block other cars
     const cells = getVehicleCells(vehicle);
     cells.forEach(cell => {
       map[cellKey(cell.x, cell.y)] = vehicle.id;

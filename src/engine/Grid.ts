@@ -20,8 +20,8 @@ export const checkEscape = (
     if (cell.x < 0 || cell.x >= gridWidth || cell.y < 0 || cell.y >= gridHeight) {
       return { canEscape: true, direction: 'out' };
     }
-    // If any cell is on an exit tile (value 3)
-    if (backgroundGrid[cell.y] && backgroundGrid[cell.y][cell.x] === 3) {
+    // Exit tile (3) or road tile (1)
+    if (backgroundGrid[cell.y] && (backgroundGrid[cell.y][cell.x] === 3 || backgroundGrid[cell.y][cell.x] === 1)) {
       return { canEscape: true, direction: 'out' };
     }
   }

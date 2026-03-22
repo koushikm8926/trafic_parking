@@ -32,7 +32,8 @@ export default function GameScreen({ navigation, route }: Props) {
     initLevel, 
     moveVehicle, 
     undo, 
-    resetLevel 
+    resetLevel,
+    removeEscapedVehicle
   } = useGameStore();
 
   const [activeHint, setActiveHint] = React.useState<HintMove | null>(null);
@@ -89,6 +90,10 @@ export default function GameScreen({ navigation, route }: Props) {
     setActiveHint(null);
     if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current);
   }, [moveVehicle]);
+
+  const handleEscapeComplete = useCallback((id: string) => {
+    removeEscapedVehicle(id);
+  }, [removeEscapedVehicle]);
 
   const handleHint = useCallback(() => {
     if (!initialLevel || vehicles.length === 0) return;
@@ -149,7 +154,7 @@ export default function GameScreen({ navigation, route }: Props) {
               vehicle={vehicle} 
               cellSize={cellSize} 
               onCommitMove={handleCommitMove}
-              onEscape={() => {}}
+              onEscape={handleEscapeComplete}
               vehiclesSV={vehiclesSV}
               occupancyMapSV={occupancyMapSV}
               backgroundGridSV={backgroundGridSV}
