@@ -34,7 +34,7 @@ export default function GameScreen({ navigation, route }: Props) {
     undo, 
     resetLevel 
   } = useGameStore();
-  
+
   const [activeHint, setActiveHint] = React.useState<HintMove | null>(null);
   const [isStuckState, setIsStuckState] = React.useState(false);
   const hintTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
