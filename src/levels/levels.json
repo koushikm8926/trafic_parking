@@ -179,7 +179,7 @@
         "x": 6,
         "y": 4,
         "direction": "vertical",
-        "length": 1,
+        "length": 2,
         "color": "#5856D6"
       },
       {
@@ -219,7 +219,7 @@
         "x": 7,
         "y": 1,
         "direction": "vertical",
-        "length": 1,
+        "length": 2,
         "color": "#FF2D55"
       },
       {
@@ -227,7 +227,7 @@
         "x": 1,
         "y": 6,
         "direction": "vertical",
-        "length": 1,
+        "length": 2,
         "color": "#FF3B30"
       },
       {
