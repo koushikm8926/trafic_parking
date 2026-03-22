@@ -7,7 +7,7 @@ export interface VehicleData {
   x: number;            // grid column of top-left cell
   y: number;            // grid row of top-left cell
   direction: Direction;
-  length: 2 | 3;
+  length: 1 | 2;
   color: string;
   isEscaping?: boolean;                           // true while animating exit
   escapedFrom?: 'top' | 'bottom' | 'left' | 'right'; // which road wall was hit
