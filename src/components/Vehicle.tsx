@@ -107,9 +107,9 @@ export const Vehicle: React.FC<Props> = ({
 
         // Phase 2: Rotate 90° to face the exit direction
         const targetRot = goRight ? Math.PI / 2 : -Math.PI / 2;
-        // Pivot offset: when the car rotates, its center shifts
+        // Pivot offset: shift car center onto the border lane
         const pivotOffsetX = goRight ? (L / 2 - 0.5) * W : -(L / 2 - 0.5) * W;
-        const pivotOffsetY = ef === 'top' ? (L / 2 - 0.5) * W : -(L / 2 - 0.5) * W;
+        const pivotOffsetY = ef === 'top' ? -(L / 2 - 0.5) * W : (L / 2 - 0.5) * W;
 
         rotation.value = withSpring(targetRot, { damping: 18, stiffness: 140 });
         translateX.value = withTiming(pivotOffsetX, {
@@ -161,7 +161,7 @@ export const Vehicle: React.FC<Props> = ({
         // Phase 2: Rotate 90° to face vertical direction
         const vertRot = goUp ? -Math.PI / 2 : Math.PI / 2;
         const pivotOffsetY = goUp ? -(L / 2 - 0.5) * W : (L / 2 - 0.5) * W;
-        const pivotOffsetX = ef === 'left' ? (L / 2 - 0.5) * W : -(L / 2 - 0.5) * W;
+        const pivotOffsetX = ef === 'left' ? -(L / 2 - 0.5) * W : (L / 2 - 0.5) * W;
 
         rotation.value = withSpring(vertRot, { damping: 18, stiffness: 140 });
         translateY.value = withTiming(pivotOffsetY, {
