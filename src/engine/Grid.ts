@@ -77,9 +77,8 @@ export const canMove = (
       );
       if (escape.canEscape) {
         allowedSteps = i * direction;
-      } else {
-        break;
       }
+      break; // Always stop at or before the grid boundary
     }
 
     // Collision with other vehicles
@@ -96,6 +95,16 @@ export const canMove = (
       return backgroundGrid[c.y] && backgroundGrid[c.y][c.x] === 2;
     });
     if (hasWallCollision) break;
+
+    // Check if any cell landed on a road (1) or exit (3) tile — this triggers escape
+    const hitsEscapeTile = cells.some((c) => {
+      if (c.x < 0 || c.x >= gridWidth || c.y < 0 || c.y >= gridHeight) return false;
+      return backgroundGrid[c.y] && (backgroundGrid[c.y][c.x] === 1 || backgroundGrid[c.y][c.x] === 3);
+    });
+    if (hitsEscapeTile) {
+      allowedSteps = i * direction;
+      break; // Stop at the border road lane
+    }
 
     allowedSteps = i * direction;
   }

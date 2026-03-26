@@ -54,19 +54,21 @@ export const Vehicle: React.FC<Props> = ({
   const committedY = useSharedValue(vehicle.y);
   const wasEscaping = React.useRef(false);
 
-  // Sync to store when vehicle moves normally
+  // Sync to store when vehicle moves
   useEffect(() => {
     committedX.value = vehicle.x;
     committedY.value = vehicle.y;
+    // Always reset translates — committedX/Y already reflect the new position
+    translateX.value = 0;
+    translateY.value = 0;
+    rotation.value  = 0;
     if (!vehicle.isEscaping) {
-      translateX.value = 0;
-      translateY.value = 0;
-      rotation.value  = 0;
       wasEscaping.current = false;
     }
   }, [vehicle.x, vehicle.y, vehicle.isEscaping]);
 
   // ─── Lane-Exit Animation ───────────────────────────────────────────
+  // New behavior: car stops at the border road lane, rotates, then exits.
   useEffect(() => {
     if (!vehicle.isEscaping || wasEscaping.current) return;
     wasEscaping.current = true;
@@ -75,105 +77,143 @@ export const Vehicle: React.FC<Props> = ({
     const L  = vehicle.length;
     const ef = vehicle.escapedFrom; // 'top' | 'bottom' | 'left' | 'right'
 
-    // Current visual center of the car in grid units (relative to its top-left x,y)
-    const carCx = vehicle.x + (isHorizontal ? L / 2 : 0.5);
-    const carCy = vehicle.y + (isHorizontal ? 0.5 : L / 2);
-
-    // The key to realistic turning: during the turn phase, the car moves in BOTH
-    // the old direction AND the new exit direction simultaneously, tracing an arc.
-    // Spring rotation gives the organic, steering-wheel "snap" feel.
+    // The car's current grid position (top-left corner)
+    const carX = vehicle.x;
+    const carY = vehicle.y;
 
     // ── VERTICAL CAR hits TOP or BOTTOM road ──────────────────────────
     if (!isHorizontal && (ef === 'top' || ef === 'bottom')) {
-      const goRight   = carCx >= gridWidth / 2;
-      const roadY     = ef === 'top' ? 0.5 : gridHeight - 0.5;
-      const targetDy  = (roadY - carCy) * W;
-      const targetRot = goRight ? Math.PI / 2 : -Math.PI / 2;
-      const exitDx    = goRight ? (gridWidth + L + 2) * W : -(gridWidth + L + 2) * W;
+      // Decide exit direction: go right if on the right half, left otherwise
+      const goRight = (carX + 0.5) >= gridWidth / 2;
 
-      // Front-Pivot Logic: When turning 90deg, the center shifts by half-length
-      // To keep the 'front' on the road centerline:
-      const pivotOffsetX = goRight ? (L/2) * W : -(L/2) * W;
-      
-      const arcDuration = 450;
+      // Phase 1: Slide to the border road row (stop AT the border, not past it)
+      // For top: the car's top-left y should be 0 (so it sits in row 0)
+      // For bottom: the car's top-left y should be gridHeight - L (last L rows)
+      // But since it needs to be ON the road row: row 0 for top, row (gridHeight-1) for bottom
+      // For a vertical car of length L at the border, we want it to end exactly
+      // with its leading edge at the road row
+      const borderY = ef === 'top' ? 0 : gridHeight - L;
+      const slideDy = (borderY - carY) * W;
 
-      rotation.value = withSpring(targetRot, { damping: 20, stiffness: 150 });
+      const slideDuration = Math.max(200, Math.abs(slideDy) / W * 120);
 
-      // Move center to front-aligned position — body follows front into lane
-      translateY.value = withTiming(targetDy, { duration: arcDuration, easing: Easing.out(Easing.quad) });
-      translateX.value = withTiming(pivotOffsetX, {
-        duration: arcDuration,
-        easing: Easing.inOut(Easing.quad),
+      // Phase 1: Slide to the border road row
+      translateY.value = withTiming(slideDy, {
+        duration: slideDuration,
+        easing: Easing.out(Easing.quad),
       }, (done) => {
         'worklet';
-        if (done) {
+        if (!done) return;
+
+        // Phase 2: Rotate 90° to face the exit direction
+        const targetRot = goRight ? Math.PI / 2 : -Math.PI / 2;
+        // Pivot offset: when the car rotates, its center shifts
+        const pivotOffsetX = goRight ? (L / 2 - 0.5) * W : -(L / 2 - 0.5) * W;
+        const pivotOffsetY = ef === 'top' ? (L / 2 - 0.5) * W : -(L / 2 - 0.5) * W;
+
+        rotation.value = withSpring(targetRot, { damping: 18, stiffness: 140 });
+        translateX.value = withTiming(pivotOffsetX, {
+          duration: 350,
+          easing: Easing.inOut(Easing.quad),
+        });
+        translateY.value = withTiming(slideDy + pivotOffsetY, {
+          duration: 350,
+          easing: Easing.inOut(Easing.quad),
+        }, (done2) => {
+          'worklet';
+          if (!done2) return;
+
+          // Phase 3: Drive out horizontally along the border lane
+          const exitDx = goRight ? (gridWidth + L + 2) * W : -(gridWidth + L + 2) * W;
           translateX.value = withTiming(exitDx, {
             duration: 600,
             easing: Easing.in(Easing.cubic),
-          }, (done2) => {
+          }, (done3) => {
             'worklet';
-            if (done2) runOnJS(onEscape)(vehicle.id);
+            if (done3) runOnJS(onEscape)(vehicle.id);
           });
-        }
+        });
       });
       return;
     }
 
     // ── HORIZONTAL CAR hits LEFT or RIGHT road ────────────────────────
     if (isHorizontal && (ef === 'left' || ef === 'right')) {
-      const goTop     = carCy <= gridHeight / 2;
-      const roadX     = ef === 'left' ? 0.5 : gridWidth - 0.5;
-      const targetDx  = (roadX - carCx) * W;
-      const cornerY   = goTop ? 0.5 : gridHeight - 0.5;
-      const targetDy  = (cornerY - carCy) * W;
-      const exitRight = ef === 'right';
-      const exitRot   = exitRight ? 0 : Math.PI;
-      const exitDx    = exitRight ? (gridWidth + L + 2) * W : -(gridWidth + L + 2) * W;
-      const vertRot   = goTop ? -Math.PI / 2 : Math.PI / 2;
+      // Decide vertical exit direction: go up if in top half, down otherwise
+      const goUp = (carY + 0.5) <= gridHeight / 2;
 
-      // Front-Pivot Logic for entering vertical lane
-      const pivotOffsetY = goTop ? -(L/2) * W : (L/2) * W;
-      const arcDuration = 450;
+      // Phase 1: Slide to the border road column (stop AT the border)
+      // For left: car's top-left x should be 0
+      // For right: car's top-left x should be gridWidth - L
+      const borderX = ef === 'left' ? 0 : gridWidth - L;
+      const slideDx = (borderX - carX) * W;
 
-      rotation.value = withSpring(vertRot, { damping: 20, stiffness: 150 });
+      const slideDuration = Math.max(200, Math.abs(slideDx) / W * 120);
 
-      // Phase 1: Front-pivot arc into the vertical road lane
-      translateX.value = withTiming(targetDx, { duration: arcDuration, easing: Easing.out(Easing.quad) });
-      translateY.value = withTiming(pivotOffsetY, {
-        duration: arcDuration,
-        easing: Easing.inOut(Easing.quad),
+      // Phase 1: Slide to the border road column
+      translateX.value = withTiming(slideDx, {
+        duration: slideDuration,
+        easing: Easing.out(Easing.quad),
       }, (done) => {
         'worklet';
-        if (done) {
-          // Cruise along vertical lane
-          const cruiseDuration = Math.max(150, Math.abs(targetDy - pivotOffsetY) / W * 150);
-          translateY.value = withTiming(targetDy, {
+        if (!done) return;
+
+        // Phase 2: Rotate 90° to face vertical direction
+        const vertRot = goUp ? -Math.PI / 2 : Math.PI / 2;
+        const pivotOffsetY = goUp ? -(L / 2 - 0.5) * W : (L / 2 - 0.5) * W;
+        const pivotOffsetX = ef === 'left' ? (L / 2 - 0.5) * W : -(L / 2 - 0.5) * W;
+
+        rotation.value = withSpring(vertRot, { damping: 18, stiffness: 140 });
+        translateY.value = withTiming(pivotOffsetY, {
+          duration: 350,
+          easing: Easing.inOut(Easing.quad),
+        });
+        translateX.value = withTiming(slideDx + pivotOffsetX, {
+          duration: 350,
+          easing: Easing.inOut(Easing.quad),
+        }, (done2) => {
+          'worklet';
+          if (!done2) return;
+
+          // Phase 3: Drive vertically along the side lane to reach the corner
+          const cornerY = goUp ? 0 : gridHeight - 1;
+          const currentCenterY = carY + 0.5; // original center of horizontal car
+          const cruiseDy = (cornerY + 0.5 - currentCenterY) * W;
+          const totalVerticalDy = pivotOffsetY + cruiseDy;
+          const cruiseDuration = Math.max(200, Math.abs(cruiseDy) / W * 120);
+
+          translateY.value = withTiming(totalVerticalDy, {
             duration: cruiseDuration,
             easing: Easing.linear,
-          }, (done2) => {
+          }, (done3) => {
             'worklet';
-            if (!done2) return;
-            
-            // Phase 3: Final turn to exit orientation
-            const finalPivotX = exitRight ? (L/2) * W : -(L/2) * W;
-            rotation.value = withSpring(exitRot, { damping: 20, stiffness: 150 });
-            
-            translateX.value = withTiming(targetDx + finalPivotX, {
+            if (!done3) return;
+
+            // Phase 4: Turn to face horizontal exit direction and drive off-screen
+            const exitRight = ef === 'right';
+            const exitRot = exitRight ? 0 : Math.PI;
+            const finalPivotX = exitRight ? (L / 2 - 0.5) * W : -(L / 2 - 0.5) * W;
+
+            rotation.value = withSpring(exitRot, { damping: 18, stiffness: 140 });
+            translateX.value = withTiming(slideDx + pivotOffsetX + finalPivotX, {
               duration: 350,
               easing: Easing.out(Easing.quad),
-            }, (done3) => {
+            }, (done4) => {
               'worklet';
-              if (!done3) return;
-              translateX.value = withTiming(exitDx + targetDx, {
+              if (!done4) return;
+
+              // Phase 5: Exit off-screen horizontally
+              const exitDx = exitRight ? (gridWidth + L + 2) * W : -(gridWidth + L + 2) * W;
+              translateX.value = withTiming(exitDx, {
                 duration: 600,
                 easing: Easing.in(Easing.cubic),
-              }, (done4) => {
+              }, (done5) => {
                 'worklet';
-                if (done4) runOnJS(onEscape)(vehicle.id);
+                if (done5) runOnJS(onEscape)(vehicle.id);
               });
             });
           });
-        }
+        });
       });
       return;
     }
