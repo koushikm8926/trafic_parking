@@ -21,7 +21,7 @@ const WHITE_VAN_IMAGE = require('../../assets/vehicles/white-van.png');
 interface Props {
   vehicle: VehicleData;
   cellSize: number;
-  onCommitMove: (vehicleId: string, deltaX: number, deltaY: number) => void;
+  onCommitMove: (vehicleId: string, deltaX: number, deltaY: number, isEscapeMove: boolean) => void;
   onEscape: (vehicleId: string) => void;
   // SharedValues for UI-thread access
   vehiclesSV: SharedValue<VehicleData[]>;
@@ -235,6 +235,17 @@ export const Vehicle: React.FC<Props> = ({
     .onUpdate((event) => {
       'worklet';
 
+      const isEscapePosition = (vx: number, vy: number) => {
+        'worklet';
+        for (let i = 0; i < vehicle.length; i++) {
+          const cx = isHorizontal ? vx + i : vx;
+          const cy = isHorizontal ? vy : vy + i;
+          if (cx < 0 || cx >= gridWidth || cy < 0 || cy >= gridHeight) return true;
+          if (backgroundGridSV.value[cy] && (backgroundGridSV.value[cy][cx] === 1 || backgroundGridSV.value[cy][cx] === 3)) return true;
+        }
+        return false;
+      };
+
       if (isHorizontal) {
         const maxRight = canMove(vehicle.id, gridWidth,  0, vehiclesSV.value, occupancyMapSV.value, gridWidth, gridHeight, backgroundGridSV.value);
         const maxLeft  = canMove(vehicle.id, -gridWidth, 0, vehiclesSV.value, occupancyMapSV.value, gridWidth, gridHeight, backgroundGridSV.value);
@@ -245,7 +256,12 @@ export const Vehicle: React.FC<Props> = ({
         const steps = Math.round(translateX.value / cellSize);
         if (lastBlockedStep.value !== steps) {
           if (translateX.value === limitRight || translateX.value === limitLeft) {
-            runOnJS(haptics.impact)('light');
+            const limitDx = (translateX.value === limitRight) ? maxRight : maxLeft;
+            const isEscapeLimit = isEscapePosition(vehicle.x + limitDx, vehicle.y);
+            
+            if (!isEscapeLimit) {
+              runOnJS(haptics.impact)('light');
+            }
           }
           lastBlockedStep.value = steps;
         }
@@ -259,7 +275,12 @@ export const Vehicle: React.FC<Props> = ({
         const steps = Math.round(translateY.value / cellSize);
         if (lastBlockedStep.value !== steps) {
           if (translateY.value === limitDown || translateY.value === limitUp) {
-            runOnJS(haptics.impact)('light');
+            const limitDy = (translateY.value === limitDown) ? maxDown : maxUp;
+            const isEscapeLimit = isEscapePosition(vehicle.x, vehicle.y + limitDy);
+            
+            if (!isEscapeLimit) {
+              runOnJS(haptics.impact)('light');
+            }
           }
           lastBlockedStep.value = steps;
         }
@@ -307,8 +328,18 @@ export const Vehicle: React.FC<Props> = ({
         const onFinish = (finished?: boolean) => {
           'worklet';
           if (finished) {
-            runOnJS(haptics.selection)();
-            runOnJS(onCommitMove)(vehicle.id, deltaX, deltaY);
+            let isEscapeMove = false;
+            for (let i = 0; i < vehicle.length; i++) {
+              const cx = isHorizontal ? vehicle.x + deltaX + i : vehicle.x + deltaX;
+              const cy = isHorizontal ? vehicle.y + deltaY : vehicle.y + deltaY + i;
+              if (cx < 0 || cx >= gridWidth || cy < 0 || cy >= gridHeight) { isEscapeMove = true; break; }
+              if (backgroundGridSV.value[cy] && (backgroundGridSV.value[cy][cx] === 1 || backgroundGridSV.value[cy][cx] === 3)) { isEscapeMove = true; break; }
+            }
+            
+            if (!isEscapeMove) {
+              runOnJS(haptics.selection)();
+            }
+            runOnJS(onCommitMove)(vehicle.id, deltaX, deltaY, isEscapeMove);
           }
         };
 

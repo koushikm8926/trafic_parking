@@ -84,9 +84,14 @@ export default function GameScreen({ navigation, route }: Props) {
     return (screenWidth - 40) / initialLevel.gridWidth;
   }, [initialLevel]);
 
-  const handleCommitMove = useCallback((id: string, dx: number, dy: number) => {
+  const handleCommitMove = useCallback((id: string, dx: number, dy: number, isEscapeMove: boolean = false) => {
     moveVehicle(id, dx, dy);
-    soundManager.playSound('move');
+    
+    // Skip the regular 'move' sound (popping) if the car is exiting
+    if (!isEscapeMove) {
+      soundManager.playSound('move');
+    }
+
     // Clear hint when a move is made
     setActiveHint(null);
     if (hintTimeoutRef.current) clearTimeout(hintTimeoutRef.current);
