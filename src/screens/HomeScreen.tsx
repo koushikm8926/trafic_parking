@@ -6,6 +6,7 @@ import Animated, {
   withSpring,
   withRepeat
 } from 'react-native-reanimated';
+import { soundManager } from '../utils/soundManager';
 
 interface Props {
   navigation: any;
@@ -19,6 +20,10 @@ export default function HomeScreen({ navigation }: Props) {
     transform: [{ scale: withSpring(scale.value, { damping: 10, stiffness: 120 }) }],
     opacity: withSpring(opacity.value, { damping: 15, stiffness: 150 }),
   }));
+
+  useEffect(() => {
+    soundManager.loadSounds();
+  }, []);
 
   const handlePressIn = () => {
     scale.value = 0.85;
@@ -34,6 +39,7 @@ export default function HomeScreen({ navigation }: Props) {
 
 
   const handlePress = () => {
+    soundManager.playSound('pop');
     // Add a slight delay so the user can feel the button animation
     setTimeout(() => {
       navigation.navigate('LevelSelect');

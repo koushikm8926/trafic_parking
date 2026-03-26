@@ -1,12 +1,13 @@
 import { Audio } from 'expo-av';
 
-export type SoundType = 'move' | 'win' | 'invalid' | 'escape';
+export type SoundType = 'move' | 'win' | 'invalid' | 'escape' | 'pop';
 
 const soundFiles: Record<SoundType, any> = {
   move: require('../assets/sounds/move.wav'),
   win: require('../assets/sounds/move.wav'),
   invalid: require('../assets/sounds/move.wav'),
   escape: require('../assets/sounds/move.wav'), // Placeholder if escape sound not separate
+  pop: require('../assets/sounds/pop.mp3'),
 };
 
 class SoundManager {
