@@ -79,7 +79,7 @@ export const GameGrid: React.FC<Props> = ({
 const styles = StyleSheet.create({
   gridContainer: {
     backgroundColor: '#b6b6b6',
-    borderRadius: 12,
+    borderRadius: 20,
     overflow: 'visible', // Changed from 'hidden' to 'visible'
     position: 'relative',
     borderWidth: 3,
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
   },
   cell: {
     position: 'absolute',
-    borderWidth: 1,
+    borderWidth: 0,
     borderColor: 'rgba(0, 0, 0, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -121,6 +121,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 204, 0, 0.1)',
     borderWidth: 3,
     borderColor: '#FFCC00',
-    borderRadius: 8,
+    borderRadius: 18,
   },
 });
