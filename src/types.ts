@@ -23,6 +23,16 @@ export interface HazardData {
   loopType: 'loop' | 'reverse';
 }
 
+export interface GuardData {
+  id: string;
+  startCell: number;   // Starting cell position (e.g., 4)
+  endCell: number;     // Ending cell position (e.g., 9)
+  side: 'top' | 'bottom' | 'left' | 'right';  // Which side of the grid
+  speed: number;       // cells per second (default: 1)
+  currentPosition: number;  // Current cell position
+  direction: 1 | -1;   // 1 = moving toward end, -1 = moving toward start
+}
+
 export interface LevelData {
   id: number;
   gridWidth: number;
@@ -34,6 +44,7 @@ export interface LevelData {
   exitSide: 'right' | 'left' | 'top' | 'bottom';
   difficulty?: 'tutorial' | 'easy' | 'medium' | 'hard' | 'expert';
   hazards?: HazardData[];
+  guards?: GuardData[];
 }
 
 export interface MoveRecord {

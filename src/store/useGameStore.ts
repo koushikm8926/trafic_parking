@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { VehicleData } from '../types';
+import { VehicleData, GuardData } from '../types';
 import { getLevelById } from '../levels';
 import { checkEscape } from '../engine/Grid';
 
@@ -10,35 +10,51 @@ interface HistoryItem {
 
 interface GameState {
   vehicles: VehicleData[];
+  guards: GuardData[];
   history: HistoryItem[];
   moveCount: number;
   levelId: number | null;
   isWin: boolean;
+  isGameOver: boolean;
   
   // Actions
   initLevel: (levelId: number) => void;
   moveVehicle: (vehicleId: string, deltaX: number, deltaY: number) => void;
   removeEscapedVehicle: (vehicleId: string) => void;
+  updateGuardPosition: (guardId: string, position: number) => void;
+  checkGuardCollision: () => void;
+  setGameOver: (gameOver: boolean) => void;
   undo: () => void;
   resetLevel: () => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
   vehicles: [],
+  guards: [],
   history: [],
   moveCount: 0,
   levelId: null,
   isWin: false,
+  isGameOver: false,
 
   initLevel: (levelId: number) => {
     const level = getLevelById(levelId);
     if (level) {
+      // Initialize guards with their starting positions
+      const initialGuards = level.guards?.map(g => ({
+        ...g,
+        currentPosition: g.startCell,
+        direction: 1 as 1 | -1,
+      })) || [];
+      
       set({
         levelId,
         vehicles: level.vehicles,
+        guards: initialGuards,
         history: [],
         moveCount: 0,
         isWin: false,
+        isGameOver: false,
       });
     }
   },
@@ -129,5 +145,72 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (levelId !== null) {
       get().initLevel(levelId);
     }
+  },
+
+  updateGuardPosition: (guardId: string, position: number) => {
+    const { guards } = get();
+    const updatedGuards = guards.map(g =>
+      g.id === guardId ? { ...g, currentPosition: position } : g
+    );
+    set({ guards: updatedGuards });
+  },
+
+  checkGuardCollision: () => {
+    const { vehicles, guards, levelId, isGameOver } = get();
+    if (isGameOver) return; // Already game over
+    
+    const level = levelId ? getLevelById(levelId) : null;
+    if (!level || !guards || guards.length === 0) return;
+
+    for (const guard of guards) {
+      for (const vehicle of vehicles) {
+        if (vehicle.isEscaping) continue; // Skip escaping vehicles
+
+        // Calculate the cells occupied by the vehicle
+        const vehicleCells: { x: number; y: number }[] = [];
+        for (let i = 0; i < vehicle.length; i++) {
+          if (vehicle.direction === 'horizontal') {
+            vehicleCells.push({ x: vehicle.x + i, y: vehicle.y });
+          } else {
+            vehicleCells.push({ x: vehicle.x, y: vehicle.y + i });
+          }
+        }
+
+        // Check if any vehicle cell overlaps with guard position
+        const guardCell = { x: 0, y: 0 };
+        switch (guard.side) {
+          case 'right':
+            guardCell.x = level.gridWidth - 1;
+            guardCell.y = Math.floor(guard.currentPosition);
+            break;
+          case 'left':
+            guardCell.x = 0;
+            guardCell.y = Math.floor(guard.currentPosition);
+            break;
+          case 'top':
+            guardCell.x = Math.floor(guard.currentPosition);
+            guardCell.y = 0;
+            break;
+          case 'bottom':
+            guardCell.x = Math.floor(guard.currentPosition);
+            guardCell.y = level.gridHeight - 1;
+            break;
+        }
+
+        // Check collision
+        const collision = vehicleCells.some(
+          cell => cell.x === guardCell.x && cell.y === guardCell.y
+        );
+
+        if (collision) {
+          set({ isGameOver: true });
+          return;
+        }
+      }
+    }
+  },
+
+  setGameOver: (gameOver: boolean) => {
+    set({ isGameOver: gameOver });
   },
 }));

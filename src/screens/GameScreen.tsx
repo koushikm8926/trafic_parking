@@ -5,6 +5,7 @@ import { useSharedValue, SharedValue } from 'react-native-reanimated';
 import { getLevelById } from '../levels';
 import { GameGrid } from '../components/GameGrid';
 import { Vehicle } from '../components/Vehicle';
+import { Guard } from '../components/Guard';
 import { buildOccupancyMap } from '../utils/gridUtils';
 import { useGameStore } from '../store/useGameStore';
 import { VehicleData, CellValue } from '../types';
@@ -28,13 +29,17 @@ export default function GameScreen({ navigation, route }: Props) {
   // Zustand Store
   const {
     vehicles,
+    guards,
     moveCount,
     isWin,
+    isGameOver,
     initLevel,
     moveVehicle,
     undo,
     resetLevel,
-    removeEscapedVehicle
+    removeEscapedVehicle,
+    updateGuardPosition,
+    checkGuardCollision,
   } = useGameStore();
 
   const [activeHint, setActiveHint] = React.useState<HintMove | null>(null);
@@ -78,6 +83,29 @@ export default function GameScreen({ navigation, route }: Props) {
       }
     }
   }, [isWin, levelId, moveCount, navigation, vehicles, initialLevel]);
+
+  // Game Over Detection (collision with guard)
+  useEffect(() => {
+    if (isGameOver) {
+      soundManager.playSound('move'); // You can add a crash sound later
+      haptics.notification('error');
+      // Show game over after a short delay
+      setTimeout(() => {
+        setIsStuckState(true); // Reuse stuck overlay for now
+      }, 100);
+    }
+  }, [isGameOver]);
+
+  // Check collisions periodically
+  useEffect(() => {
+    if (guards.length === 0 || isGameOver) return;
+
+    const interval = setInterval(() => {
+      checkGuardCollision();
+    }, 100); // Check every 100ms
+
+    return () => clearInterval(interval);
+  }, [guards, vehicles, isGameOver, checkGuardCollision]);
 
   const cellSize = useMemo(() => {
     if (!initialLevel) return 0;
@@ -165,10 +193,26 @@ export default function GameScreen({ navigation, route }: Props) {
               isHinted={activeHint?.vehicleId === vehicle.id}
             />
           ))}
-          {isStuckState && (
+          {guards.map((guard) => (
+            <Guard
+              key={guard.id}
+              guard={guard}
+              cellSize={cellSize}
+              gridWidth={initialLevel.gridWidth}
+              gridHeight={initialLevel.gridHeight}
+              onPositionUpdate={updateGuardPosition}
+            />
+          ))}
+          {isStuckState && !isGameOver && (
             <View style={styles.stuckOverlay} pointerEvents="none">
               <Text style={styles.stuckText}>STUCK!</Text>
               <Text style={styles.stuckSubText}>Try Undo or Reset</Text>
+            </View>
+          )}
+          {isGameOver && (
+            <View style={styles.gameOverOverlay} pointerEvents="none">
+              <Text style={styles.gameOverText}>GAME OVER!</Text>
+              <Text style={styles.gameOverSubText}>Hit the guard!</Text>
             </View>
           )}
         </View>
@@ -222,6 +266,29 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  gameOverOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 20,
+    borderWidth: 3,
+    borderColor: '#FF0000',
+  },
+  gameOverText: {
+    color: '#FFF',
+    fontSize: 45,
+    fontWeight: '900',
+    textShadowColor: 'rgba(0,0,0,0.7)',
+    textShadowOffset: { width: 0, height: 3 },
+    textShadowRadius: 6,
+  },
+  gameOverSubText: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 8,
   },
 });
 

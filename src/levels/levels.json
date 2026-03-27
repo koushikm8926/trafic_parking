@@ -267,6 +267,17 @@
       25
     ],
     "exitSide": "right",
-    "difficulty": "tutorial"
+    "difficulty": "tutorial",
+    "guards": [
+      {
+        "id": "guard1",
+        "startCell": 4,
+        "endCell": 9,
+        "side": "right",
+        "speed": 1.5,
+        "currentPosition": 4,
+        "direction": 1
+      }
+    ]
   }
 ]
