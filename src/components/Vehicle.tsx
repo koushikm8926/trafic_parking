@@ -230,7 +230,7 @@ export const Vehicle: React.FC<Props> = ({
     .enabled(!vehicle.isEscaping)  // disable dragging while escaping
     .onBegin(() => {
       'worklet';
-      runOnJS(haptics.selection)();
+      // No haptics on begin to avoid vibration when escaping
     })
     .onUpdate((event) => {
       'worklet';
@@ -259,9 +259,10 @@ export const Vehicle: React.FC<Props> = ({
             const limitDx = (translateX.value === limitRight) ? maxRight : maxLeft;
             const isEscapeLimit = isEscapePosition(vehicle.x + limitDx, vehicle.y);
             
-            if (!isEscapeLimit) {
-              runOnJS(haptics.impact)('light');
-            }
+            // Removed haptics when cars crash into each other
+            // if (!isEscapeLimit) {
+            //   runOnJS(haptics.impact)('light');
+            // }
           }
           lastBlockedStep.value = steps;
         }
@@ -278,9 +279,10 @@ export const Vehicle: React.FC<Props> = ({
             const limitDy = (translateY.value === limitDown) ? maxDown : maxUp;
             const isEscapeLimit = isEscapePosition(vehicle.x, vehicle.y + limitDy);
             
-            if (!isEscapeLimit) {
-              runOnJS(haptics.impact)('light');
-            }
+            // Removed haptics when cars crash into each other
+            // if (!isEscapeLimit) {
+            //   runOnJS(haptics.impact)('light');
+            // }
           }
           lastBlockedStep.value = steps;
         }

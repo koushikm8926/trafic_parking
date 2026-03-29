@@ -87,8 +87,8 @@ export default function GameScreen({ navigation, route }: Props) {
   // Game Over Detection (collision with guard)
   useEffect(() => {
     if (isGameOver) {
-      soundManager.playSound('move'); // You can add a crash sound later
-      haptics.notification('error');
+      // soundManager.playSound('move'); // Removed as per user request
+      // haptics.notification('error'); // Removed as per user request
       // Show game over after a short delay
       setTimeout(() => {
         setIsStuckState(true); // Reuse stuck overlay for now
